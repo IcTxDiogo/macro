@@ -42,6 +42,8 @@ TrocarTimeHoenn(totalTimes := 2) {
             Send("{" TankAtualTime2_33 "}")
         }
     }
+    Send("{" KeyPokestop "}")
+    Send("{" KeyFullDef "}")
 }
 
 ; --- MODO 3-3 (O QUE VOCÊ JÁ TINHA) ---
@@ -79,11 +81,6 @@ ExecutarRodizio33(p1, p2, p3) {
     Send("{" p3 "}")
     Sleep(SleepAfterSwitch)
     ComboSimples()
-    Sleep(SleepAfterThirdCombo)
-
-    Send("{" p1 "}")
-    Sleep(SleepAfterHeal)
-    Send("e") ; Cura
 
     if (TimeAtual == 2) {
         TankAtualTime2_33 := (TankAtualTime2_33 == 4) ? 5 : 4
@@ -120,11 +117,6 @@ ExecutarRodizio222(p1, p2) {
     Send("{" p2 "}") ; Chama p2
     Sleep(SleepAfterSwitch)
     ComboSimples()
-    Sleep(SleepAfterThirdCombo)
-
-    Send("{" p1 "}") ; Volta pro p1
-    Sleep(SleepAfterHeal)
-    Send("e") ; Cura p1 enquanto o p2 descansa na ball
 
     isRodizioAtivo := false
 }

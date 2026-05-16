@@ -12,8 +12,8 @@ try {
 }
 
 ; --- MODO ATUAL ---
-global ModoAtual := "Normal"  ; Pode ser "Normal", "Hoenn33", "Hoenn222"
-global StatusText := "Modo: Normal"
+global ModoAtual := "Hoenn222"  ; Pode ser "Normal", "Hoenn33", "Hoenn222"
+global StatusText := "Modo: Hoenn 2-2-2 - Time: 1"
 
 ; --- HOTKEY PARA TROCAR MODO ---
 F12:: TrocarModo()
@@ -40,8 +40,14 @@ Acao_Gatilhos() {
         Revive()
     } else if (ModoAtual == "Hoenn33") {
         TrocarTimeHoenn(2)
+        Sleep(SleepAfterSwitch)
+        Send("{" KeyPokestop "}")
+        Potion()
     } else if (ModoAtual == "Hoenn222") {
         TrocarTimeHoenn(3)
+        Sleep(SleepAfterSwitch)
+        Send("{" KeyPokestop "}")
+        Potion()
     }
 }
 
@@ -60,7 +66,7 @@ Acao_FaceDown() {
 }
 
 Acao_FaceRight() {
-    PokeStop()
+    ThrowBallAround()
 }
 
 Acao_FaceLeft() {
@@ -68,7 +74,15 @@ Acao_FaceLeft() {
 }
 
 Acao_FaceUp() {
-    AtivarBuffDrop()
+    ChangeTarget()
+}
+
+Acao_LeftThumb() {
+    Potion()
+}
+
+Acao_RightThumb() {
+    Potion()
 }
 
 ; --- HOTKEYS PARA TECLADO E MOUSE ---
