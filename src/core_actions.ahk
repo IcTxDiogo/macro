@@ -36,36 +36,44 @@ ThrowBallAround() {
         return
     }
 
-    startX := BallOriginX
-    startY := BallOriginY
+    baseX := PlayerOriginX
+    baseY := PlayerOriginY
 
-    path := [
-        [0, 0],
-        [1, 0],
-        [1, 0],
-        [0, 1],
-        [0, 1],
+    offsets := [
+        [-1, -1],
+        [0, -1],
+        [1, -1],
         [-1, 0],
-        [-1, 0],
-        [0, -1]
+        [1, 0],
+        [-1, 1],
+        [0, 1],
+        [1, 1]
     ]
 
-    x := startX
-    y := startY
-    MouseMove(x, y, 0)
-    Sleep(30)
-    Send("{" KeyBall "}")
-    Sleep(30)
-    for step in path {
-        x += step[1] * BallMouseSpacing
-        y += step[2] * BallMouseSpacing
+    for offset in offsets {
+        x := baseX + (offset[1] * TileSize)
+        y := baseY + (offset[2] * TileSize)
         MouseMove(x, y, 0)
         Sleep(30)
         Send("{" KeyBall "}")
-        Sleep(230)
+        Sleep(250)
     }
 
-    MouseMove(startX, startY, 0)
+    MouseMove(baseX, baseY, 0)
+}
+
+PokeMoveDown2AndF3() {
+    if !WinActive(GameWindow) {
+        return
+    }
+
+    x := PlayerOriginX
+    y := PlayerOriginY + (3 * TileSize)
+    MouseMove(x, y, 0)
+    Sleep(30)
+    Send("{" KeyMovePokemon "}")
+    Sleep(50)
+    Send("{" KeyPokeMoveF3 "}")
 }
 
 Revive() {

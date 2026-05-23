@@ -10,7 +10,7 @@ global DeadzoneMove := 20000
 
 ; Tempos de espera (em ms)
 global SleepAfterCombo := 3000
-global SleepAfterSwitch := 700
+global SleepAfterSwitch := 800
 global SleepAfterSecondCombo := 3000
 global SleepAfterThirdCombo := 4000
 global SleepAfterHeal := 700
@@ -29,10 +29,11 @@ global KeyPotion := "e"
 global KeyChangeTarget := "Tab"
 global KeyFullDef := "t"
 global KeyFullAtk := "y"
+global KeyPokeMoveF3 := "f3"
 
-; Distancia do mouse para jogar ball ao redor
-global BallMouseSpacing := 70
+; Tamanho do tile (em px)
+global TileSize := 70
 
-; Coordenadas fixas (canto superior esquerdo do client)
-global BallOriginX := 900
-global BallOriginY := 340
+; Coordenadas do personagem
+global PlayerOriginX := 970
+global PlayerOriginY := 410

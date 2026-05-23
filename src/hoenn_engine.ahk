@@ -108,7 +108,7 @@ ComboComplexoHoenn222() {
 }
 
 ExecutarRodizio222(p1, p2) {
-    global isRodizioAtivo
+    global isRodizioAtivo, TimeAtual
     isRodizioAtivo := true
 
     ComboSimples() ; Bate com o p1 (que já está fora)
@@ -117,6 +117,13 @@ ExecutarRodizio222(p1, p2) {
     Send("{" p2 "}") ; Chama p2
     Sleep(SleepAfterSwitch)
     ComboSimples()
+
+    Sleep(SleepAfterCombo)
+
+    if (TimeAtual == 1) {
+        PokeMoveDown2AndF3()
+        Sleep(50)
+    }
 
     isRodizioAtivo := false
 }
