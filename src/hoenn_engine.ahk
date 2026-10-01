@@ -108,7 +108,7 @@ ComboComplexoHoenn222() {
 }
 
 ExecutarRodizio222(p1, p2) {
-    global isRodizioAtivo, TimeAtual
+    global isRodizioAtivo, TimeAtual, comboMrMime
     isRodizioAtivo := true
 
     ComboSimples() ; Bate com o p1 (que já está fora)
@@ -120,9 +120,20 @@ ExecutarRodizio222(p1, p2) {
 
     Sleep(SleepAfterCombo)
 
-    if (TimeAtual == 1) {
-        PokeMoveDown2AndF3()
+    if (TimeAtual == 1 && comboMrMime == 1) {
+        MrMimeCombo()
+    }
+
+    ; Exclusivo Time 3: lança Pokémon 2 e usa skill F6
+    if (TimeAtual == 3) {
+        Send("{2}")
+        Sleep(SleepAfterSwitch)
+        Send("{" KeyPokeMoveF6 "}")
+        Send("{" KeyPokestop "}")
+        Sleep(500)
+        Send("{6}")
         Sleep(50)
+        Send("{" KeyPokestop "}")
     }
 
     isRodizioAtivo := false

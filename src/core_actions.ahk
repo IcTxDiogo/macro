@@ -37,7 +37,8 @@ ThrowBallAround() {
     }
 
     baseX := PlayerOriginX
-    baseY := PlayerOriginY
+    ; Desloca o centro da ação 1 SQM para cima do personagem
+    baseY := PlayerOriginY - TileSize * 2
 
     offsets := [
         [-1, -1],
@@ -59,10 +60,11 @@ ThrowBallAround() {
         Sleep(250)
     }
 
-    MouseMove(baseX, baseY, 0)
+    ; Retorna o mouse para o seu personagem (e não para o novo centro)
+    MouseMove(PlayerOriginX, PlayerOriginY, 0)
 }
 
-PokeMoveDown2AndF3() {
+MrMimeCombo() {
     if !WinActive(GameWindow) {
         return
     }
@@ -70,10 +72,19 @@ PokeMoveDown2AndF3() {
     x := PlayerOriginX
     y := PlayerOriginY + (3 * TileSize)
     MouseMove(x, y, 0)
-    Sleep(30)
+    Sleep(50)
     Send("{" KeyMovePokemon "}")
     Sleep(50)
+    Send("{" KeyPokestop "}")
+    Sleep(50)
+    Send("{ctrl down}")
+    Sleep(50)
+    Send("{w}")
+    Sleep(50)
+    Send("{ctrl up}")
+    Sleep(50)
     Send("{" KeyPokeMoveF3 "}")
+    Sleep(50)
 }
 
 Revive() {

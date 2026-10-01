@@ -14,6 +14,7 @@ try {
 ; --- MODO ATUAL ---
 global ModoAtual := "Hoenn222"  ; Pode ser "Normal", "Hoenn33", "Hoenn222"
 global StatusText := "Modo: Hoenn 2-2-2 - Time: 1"
+global comboMrMime := 0
 
 ; --- HOTKEY PARA TROCAR MODO ---
 F12:: TrocarModo()

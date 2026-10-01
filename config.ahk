@@ -30,6 +30,7 @@ global KeyChangeTarget := "Tab"
 global KeyFullDef := "t"
 global KeyFullAtk := "y"
 global KeyPokeMoveF3 := "f3"
+global KeyPokeMoveF6 := "f6"
 
 ; Tamanho do tile (em px)
 global TileSize := 70
