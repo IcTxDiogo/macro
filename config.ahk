@@ -3,7 +3,7 @@
 ; --- CONFIGURAÇÕES GLOBAIS ---
 
 ; Nome da janela do jogo
-global GameWindow := "PokeAlliance"
+global GameWindow := "ahk_exe PokeAlliance_dx.exe"
 
 ; Deadzone para movimento analógico
 global DeadzoneMove := 20000
@@ -12,8 +12,6 @@ global DeadzoneMove := 20000
 global SleepAfterCombo := 3000
 global SleepAfterSwitch := 800
 global SleepAfterSecondCombo := 3000
-global SleepAfterThirdCombo := 4000
-global SleepAfterHeal := 700
 
 ; Teclas para ações
 global KeyPokestop := "c"
@@ -24,7 +22,6 @@ global KeyBall := "v"
 global KeyBallSpecial := "p"
 global KeyRevive := "Space"
 global KeyBuffMove := "f1"
-global KeyBuffDrop := "j"
 global KeyPotion := "e"
 global KeyChangeTarget := "Tab"
 global KeyFullDef := "t"

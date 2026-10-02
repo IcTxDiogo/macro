@@ -11,34 +11,43 @@ GameLoop() {
     static buttons_pressed := Map()
     State := XInput_GetState(0)
     if !State {
-        ToolTip("Controle Desconectado", 210, 0)
+        if WinExist(GameWindow) {
+            WinGetPos(&winX, &winY, , , GameWindow)
+            CoordMode("ToolTip", "Screen")
+            ToolTip("Controle Desconectado", winX + 210, winY)
+        } else {
+            ToolTip("Controle Desconectado", 210, 0)
+        }
         return
     }
 
-    isGameActive := WinActive(GameWindow)
+    isGameActive := WinExist(GameWindow)
 
     if (isGameActive) {
-        ToolTip(StatusText, 210, 30)
+        ; Pega a posição da janela do jogo para exibir o texto nela
+        WinGetPos(&winX, &winY, , , GameWindow)
+        CoordMode("ToolTip", "Screen")
+        ToolTip(StatusText, winX + 210, winY + 30)
         ; Movimento analógico
         if (State.sThumbLY > DeadzoneMove || State.sThumbRY > DeadzoneMove) {
-            (wasd_active["w"] ? "" : (Send("{w down}"), wasd_active["w"] := true))
+            (wasd_active["w"] ? "" : (ControlSend("{w down}", , GameWindow), wasd_active["w"] := true))
         } else if wasd_active["w"] {
-            Send("{w up}"), wasd_active["w"] := false
+            ControlSend("{w up}", , GameWindow), wasd_active["w"] := false
         }
         if (State.sThumbLY < -DeadzoneMove || State.sThumbRY < -DeadzoneMove) {
-            (wasd_active["s"] ? "" : (Send("{s down}"), wasd_active["s"] := true))
+            (wasd_active["s"] ? "" : (ControlSend("{s down}", , GameWindow), wasd_active["s"] := true))
         } else if wasd_active["s"] {
-            Send("{s up}"), wasd_active["s"] := false
+            ControlSend("{s up}", , GameWindow), wasd_active["s"] := false
         }
         if (State.sThumbLX < -DeadzoneMove || State.sThumbRX < -DeadzoneMove) {
-            (wasd_active["a"] ? "" : (Send("{a down}"), wasd_active["a"] := true))
+            (wasd_active["a"] ? "" : (ControlSend("{a down}", , GameWindow), wasd_active["a"] := true))
         } else if wasd_active["a"] {
-            Send("{a up}"), wasd_active["a"] := false
+            ControlSend("{a up}", , GameWindow), wasd_active["a"] := false
         }
         if (State.sThumbLX > DeadzoneMove || State.sThumbRX > DeadzoneMove) {
-            (wasd_active["d"] ? "" : (Send("{d down}"), wasd_active["d"] := true))
+            (wasd_active["d"] ? "" : (ControlSend("{d down}", , GameWindow), wasd_active["d"] := true))
         } else if wasd_active["d"] {
-            Send("{d up}"), wasd_active["d"] := false
+            ControlSend("{d up}", , GameWindow), wasd_active["d"] := false
         }
     }
 

@@ -42,12 +42,12 @@ Acao_Gatilhos() {
     } else if (ModoAtual == "Hoenn33") {
         TrocarTimeHoenn(2)
         Sleep(SleepAfterSwitch)
-        Send("{" KeyPokestop "}")
+        ControlSend("{" KeyPokestop "}", , GameWindow)
         Potion()
     } else if (ModoAtual == "Hoenn222") {
         TrocarTimeHoenn(3)
         Sleep(SleepAfterSwitch)
-        Send("{" KeyPokestop "}")
+        ControlSend("{" KeyPokestop "}", , GameWindow)
         Potion()
     }
 }
@@ -67,7 +67,7 @@ Acao_FaceDown() {
 }
 
 Acao_FaceRight() {
-    ThrowBallAround()
+    ; ThrowBallAround() ; Desativado para o respawn atual (Botão Livre!)
 }
 
 Acao_FaceLeft() {

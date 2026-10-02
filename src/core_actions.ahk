@@ -1,36 +1,27 @@
 #Requires AutoHotkey v2.0
 #Include ..\config.ahk
 
-global pokeState := true
-
 ; --- FUNÇÕES DE ATAQUE E MOVIMENTAÇÃO ---
 
 ComboSimples() {
-    Send("{" KeyFullAtk "}")
+    ControlSend("{" KeyFullAtk "}", , GameWindow)
     Sleep(50)
-    Send("{" KeyPokestop "}")
+    ControlSend("{" KeyPokestop "}", , GameWindow)
     Sleep(50)
-    Send("{" KeyMedicine "}")
+    ControlSend("{" KeyMedicine "}", , GameWindow)
     Sleep(50)
-    Send("{" KeyCombo "}")
+    ControlSend("{" KeyCombo "}", , GameWindow)
 }
 
-PokeStop() {
-    global pokeState
-    if (pokeState) {
-        Send("{" KeyPokestop "}")
-    } else {
-        Send("{" KeyMovePokemon "}")
-    }
-    pokeState := !pokeState
-}
 
 CatchCenter() {
-    if WinActive(GameWindow) {
-        Send("{" KeyBallSpecial "}")
+    if WinExist(GameWindow) {
+        ControlSend("{" KeyBallSpecial "}", , GameWindow)
     }
 }
 
+; Função mantida para referência, mas atualmente NÃO UTILIZADA pelo respawn atual.
+; Responsável por jogar pokebolas em área.
 ThrowBallAround() {
     if !WinActive(GameWindow) {
         return
@@ -56,7 +47,7 @@ ThrowBallAround() {
         y := baseY + (offset[2] * TileSize)
         MouseMove(x, y, 0)
         Sleep(30)
-        Send("{" KeyBall "}")
+        ControlSend("{" KeyBall "}", , GameWindow)
         Sleep(250)
     }
 
@@ -64,6 +55,8 @@ ThrowBallAround() {
     MouseMove(PlayerOriginX, PlayerOriginY, 0)
 }
 
+; Função mantida para referência, mas atualmente NÃO UTILIZADA pelo respawn atual.
+; Responsável por combar com o Mr. Mime usando o mouse.
 MrMimeCombo() {
     if !WinActive(GameWindow) {
         return
@@ -73,54 +66,49 @@ MrMimeCombo() {
     y := PlayerOriginY + (3 * TileSize)
     MouseMove(x, y, 0)
     Sleep(50)
-    Send("{" KeyMovePokemon "}")
+    ControlSend("{" KeyMovePokemon "}", , GameWindow)
     Sleep(50)
-    Send("{" KeyPokestop "}")
+    ControlSend("{" KeyPokestop "}", , GameWindow)
     Sleep(50)
-    Send("{ctrl down}")
+    ControlSend("{ctrl down}", , GameWindow)
     Sleep(50)
-    Send("{w}")
+    ControlSend("{w}", , GameWindow)
     Sleep(50)
-    Send("{ctrl up}")
+    ControlSend("{ctrl up}", , GameWindow)
     Sleep(50)
-    Send("{" KeyPokeMoveF3 "}")
+    ControlSend("{" KeyPokeMoveF3 "}", , GameWindow)
     Sleep(50)
 }
 
 Revive() {
-    if WinActive(GameWindow) {
-        Send("{" KeyRevive "}")
+    if WinExist(GameWindow) {
+        ControlSend("{" KeyRevive "}", , GameWindow)
     }
 }
 
 ; --- FUNÇÕES DE BUFF ---
 
 AtivarBuffLure() {
-    if WinActive(GameWindow) {
-        Send("{" KeyBuffMove "}")
+    if WinExist(GameWindow) {
+        ControlSend("{" KeyBuffMove "}", , GameWindow)
     }
 }
 
-AtivarBuffDrop() {
-    if WinActive(GameWindow) {
-        Send("{" KeyBuffDrop "}")
-    }
-}
 
 ChangeTarget() {
-    if WinActive(GameWindow) {
-        Send("{" KeyChangeTarget "}")
+    if WinExist(GameWindow) {
+        ControlSend("{" KeyChangeTarget "}", , GameWindow)
     }
 }
 
 Potion() {
-    if WinActive(GameWindow) {
-        Send("{" KeyPotion "}")
+    if WinExist(GameWindow) {
+        ControlSend("{" KeyPotion "}", , GameWindow)
     }
 }
 
 InterruptAndReload() {
-    if WinActive(GameWindow) {
+    if WinExist(GameWindow) {
         Thread "Interrupt"
         Sleep 200
         Reload()

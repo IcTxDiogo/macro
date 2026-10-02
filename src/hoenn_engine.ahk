@@ -28,22 +28,22 @@ TrocarTimeHoenn(totalTimes := 2) {
     if (totalTimes == 3) {
         ; Lógica 2-2-2
         if (TimeAtual == 1) {
-            Send("{1}")
+            ControlSend("{1}", , GameWindow)
         } else if (TimeAtual == 2) {
-            Send("{3}")
+            ControlSend("{3}", , GameWindow)
         } else if (TimeAtual == 3) {
-            Send("{5}")
+            ControlSend("{5}", , GameWindow)
         }
     } else {
         ; Lógica 3-3 (Mantendo a otimização de Tank no Time 2)
         if (TimeAtual == 1) {
-            Send("{1}")
+            ControlSend("{1}", , GameWindow)
         } else {
-            Send("{" TankAtualTime2_33 "}")
+            ControlSend("{" TankAtualTime2_33 "}", , GameWindow)
         }
     }
-    Send("{" KeyPokestop "}")
-    Send("{" KeyFullDef "}")
+    ControlSend("{" KeyPokestop "}", , GameWindow)
+    ControlSend("{" KeyFullDef "}", , GameWindow)
 }
 
 ; --- MODO 3-3 (O QUE VOCÊ JÁ TINHA) ---
@@ -73,12 +73,12 @@ ExecutarRodizio33(p1, p2, p3) {
     ComboSimples()
     Sleep(SleepAfterCombo)
 
-    Send("{" p2 "}")
+    ControlSend("{" p2 "}", , GameWindow)
     Sleep(SleepAfterSwitch)
     ComboSimples()
     Sleep(SleepAfterSecondCombo)
 
-    Send("{" p3 "}")
+    ControlSend("{" p3 "}", , GameWindow)
     Sleep(SleepAfterSwitch)
     ComboSimples()
 
@@ -114,27 +114,27 @@ ExecutarRodizio222(p1, p2) {
     ComboSimples() ; Bate com o p1 (que já está fora)
     Sleep(SleepAfterCombo)
 
-    Send("{" p2 "}") ; Chama p2
+    ControlSend("{" p2 "}", , GameWindow) ; Chama p2
     Sleep(SleepAfterSwitch)
     ComboSimples()
 
     Sleep(SleepAfterCombo)
 
-    if (TimeAtual == 1 && comboMrMime == 1) {
-        MrMimeCombo()
-    }
+    ; if (TimeAtual == 1 && comboMrMime == 1) {
+    ;     MrMimeCombo()
+    ; }
 
     ; Exclusivo Time 3: lança Pokémon 2 e usa skill F6
-    if (TimeAtual == 3) {
-        Send("{2}")
-        Sleep(SleepAfterSwitch)
-        Send("{" KeyPokeMoveF6 "}")
-        Send("{" KeyPokestop "}")
-        Sleep(500)
-        Send("{6}")
-        Sleep(50)
-        Send("{" KeyPokestop "}")
-    }
+    ;if (TimeAtual == 3) {
+    ;    ControlSend("{2}", , GameWindow)
+    ;    Sleep(SleepAfterSwitch)
+    ;    ControlSend("{" KeyPokeMoveF6 "}", , GameWindow)
+    ;    ControlSend("{" KeyPokestop "}", , GameWindow)
+    ;    Sleep(500)
+    ;    ControlSend("{6}", , GameWindow)
+    ;    Sleep(50)
+    ;    ControlSend("{" KeyPokestop "}", , GameWindow)
+    ;}
 
     isRodizioAtivo := false
 }
