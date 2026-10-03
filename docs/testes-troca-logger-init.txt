@@ -1,0 +1,20 @@
+PASS real DirCreate failure does not abort application initialization
+PASS A normal cycle 1 -> 2 -> 3 -> 1
+PASS B accumulated debt, duration and usage interval
+PASS C zero debt
+PASS D WAITING_TEAM_SWITCH
+PASS E WAITING_COMBO, only 1000ms debounce
+PASS F duplicate at 999ms rejected
+PASS G target calculation throws; all accepted commands preserved
+PASS H thrown logger and real session FileAppend failure
+PASS I F8 resync followed by switch
+PASS J no window and real ControlSend TargetError to synthetic nonexistent window
+PASS debug writer unavailable with simultaneous debt/logger failures
+PASS controller press/hold/release with persistently failing tooltip calculation
+PASS ToolTip I/O throws; controller switch preserved
+PASS two tooltip IDs/positions/three decimals/debt, no frame logs, fixed sleeps
+PASS 3-3 cycle, alternating tank, original commands, no added debounce
+PASS 2-2-2 skill sequence and waits preserved; combo lock never gates manual switch
+PASS ordered diagnostics distinguish requested send from visual entry
+RESULT: 18 test groups passed; no game commands executed.
+Artifacts: C:\Users\santos\AppData\Local\Temp\macro-switch-tests-1f9db84fbd7440f8b4c518c9f997edfd

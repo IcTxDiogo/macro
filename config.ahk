@@ -36,3 +36,7 @@ global TileSize := 70
 ; Coordenadas do personagem
 global PlayerOriginX := 936
 global PlayerOriginY := 402
+
+; Offsets para o tooltip central do Hoenn 2-2-2
+global Hoenn222CenterOffsetX := 0
+global Hoenn222CenterOffsetY := -60

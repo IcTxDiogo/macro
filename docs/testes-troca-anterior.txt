@@ -1,0 +1,6 @@
+PASS BASELINE logger throws: TimeAtual=2, ControlSend count=0
+PASS BASELINE real FileAppend failure: propagated through Acao_Gatilhos, TimeAtual=2, ControlSend count=0
+PASS BASELINE debt throws: TimeAtual=2, ControlSend count=0, debounce already armed
+PASS BASELINE tooltip calculation throws: controller callbacks scheduled=0
+RESULT: 4 baseline defects reproduced in AutoHotkey v2.
+Artifacts: C:\Users\santos\AppData\Local\Temp\macro-switch-tests-81e1a3ee019740a4bb9795f21aa3b426

@@ -16,39 +16,65 @@ global ModoAtual := "Hoenn222"  ; Pode ser "Normal", "Hoenn33", "Hoenn222"
 global StatusText := "Modo: Hoenn 2-2-2 - Time: 1"
 global comboMrMime := 0
 
-; --- HOTKEY PARA TROCAR MODO ---
+; --- HOTKEY PARA TROCAR MODO E RESYNC ---
 F12:: TrocarModo()
+F8:: ResincronizarHoenn222()
 
 ; --- FUNÇÃO PARA TROCAR MODO ---
 TrocarModo() {
-    global ModoAtual, StatusText
+    global ModoAtual, StatusText, Hoenn222_State, TimeAtual
     if (ModoAtual == "Normal") {
         ModoAtual := "Hoenn33"
-        StatusText := "Modo: Hoenn 3-3 - Time: 1"
+        StatusText := "Modo: Hoenn 3-3 - Time: " TimeAtual
     } else if (ModoAtual == "Hoenn33") {
         ModoAtual := "Hoenn222"
-        StatusText := "Modo: Hoenn 2-2-2 - Time: 1"
+        StatusText := "Modo: Hoenn 2-2-2 - Time: " TimeAtual
+        ResincronizarHoenn222()
     } else {
         ModoAtual := "Normal"
         StatusText := "Modo: Normal"
+        AtualizarHoenn222CentralTooltip() ; Limpa o tooltip central ao sair do modo Hoenn 2-2-2
+    }
+}
+
+ResincronizarHoenn222() {
+    global Hoenn222_State, ModoAtual, TimeAtual
+    global Hoenn222_StateStartTick, Hoenn222_LastComboStartTick, Hoenn222_P2CallTick, Hoenn222_TankEnterTick
+    global Hoenn222_ExecutionId, Hoenn222_DebtMs
+
+    if (ModoAtual == "Hoenn222") {
+        Hoenn222_State := "WAITING_FIRST_COMBO"
+        Hoenn222_StateStartTick := A_TickCount
+        Hoenn222_LastComboStartTick := 0
+        Hoenn222_P2CallTick := 0
+        Hoenn222_TankEnterTick[TimeAtual] := 0
+        Hoenn222_ExecutionId++ ; Invalida atualizações de interface de callbacks atrasados
+        Hoenn222_DebtMs := 0   ; Zera qualquer dívida de antecipação
     }
 }
 
 ; --- DEFININDO AS AÇÕES BASEADO NO MODO ---
 
-Acao_Gatilhos() {
-    if (ModoAtual == "Normal") {
-        Revive()
-    } else if (ModoAtual == "Hoenn33") {
-        TrocarTimeHoenn(2)
-        Sleep(SleepAfterSwitch)
-        ControlSend("{" KeyPokestop "}", , GameWindow)
-        Potion()
-    } else if (ModoAtual == "Hoenn222") {
-        TrocarTimeHoenn(3)
-        Sleep(SleepAfterSwitch)
-        ControlSend("{" KeyPokestop "}", , GameWindow)
-        Potion()
+Acao_Gatilhos(source := "direct") {
+    SwitchDebug("TRIGGER_RECEIVED", "source=" source " mode=" ModoAtual " team=" TimeAtual)
+    try {
+        if (ModoAtual == "Normal") {
+            Revive()
+        } else if (ModoAtual == "Hoenn33") {
+            if (TrocarTimeHoenn(2)) {
+                Sleep(SleepAfterSwitch)
+                ControlSend("{" KeyPokestop "}", , GameWindow)
+                Potion()
+            }
+        } else if (ModoAtual == "Hoenn222") {
+            if (TrocarTimeHoenn(3)) {
+                Sleep(SleepAfterSwitch)
+                ControlSend("{" KeyPokestop "}", , GameWindow)
+                Potion()
+            }
+        }
+    } catch as e {
+        SwitchDebug("SWITCH_ERROR", "phase=trigger_action source=" source, e)
     }
 }
 
@@ -89,7 +115,7 @@ Acao_RightThumb() {
 ; --- HOTKEYS PARA TECLADO E MOUSE ---
 #HotIf WinActive(GameWindow)
 XButton1:: Acao_Bumpers()  ; Botão lateral 1 do mouse: Combo (depende do modo)
-XButton2:: Acao_Gatilhos() ; Botão lateral 2 do mouse: Revive/Troca Time (depende do modo)
+XButton2:: Acao_Gatilhos("mouse") ; Botão lateral 2 do mouse: Revive/Troca Time (depende do modo)
 #HotIf
 
 ; Carrega o motor do controle

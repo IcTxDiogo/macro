@@ -1,0 +1,397 @@
+diff --git a/main.ahk b/main.ahk
+index bda274c..1197281 100644
+--- a/main.ahk
++++ b/main.ahk
+@@ -55,21 +55,26 @@ ResincronizarHoenn222() {
+ 
+ ; --- DEFININDO AS AÇÕES BASEADO NO MODO ---
+ 
+-Acao_Gatilhos() {
+-    if (ModoAtual == "Normal") {
+-        Revive()
+-    } else if (ModoAtual == "Hoenn33") {
+-        if (TrocarTimeHoenn(2)) {
+-            Sleep(SleepAfterSwitch)
+-            ControlSend("{" KeyPokestop "}", , GameWindow)
+-            Potion()
+-        }
+-    } else if (ModoAtual == "Hoenn222") {
+-        if (TrocarTimeHoenn(3)) {
+-            Sleep(SleepAfterSwitch)
+-            ControlSend("{" KeyPokestop "}", , GameWindow)
+-            Potion()
++Acao_Gatilhos(source := "direct") {
++    SwitchDebug("TRIGGER_RECEIVED", "source=" source " mode=" ModoAtual " team=" TimeAtual)
++    try {
++        if (ModoAtual == "Normal") {
++            Revive()
++        } else if (ModoAtual == "Hoenn33") {
++            if (TrocarTimeHoenn(2)) {
++                Sleep(SleepAfterSwitch)
++                ControlSend("{" KeyPokestop "}", , GameWindow)
++                Potion()
++            }
++        } else if (ModoAtual == "Hoenn222") {
++            if (TrocarTimeHoenn(3)) {
++                Sleep(SleepAfterSwitch)
++                ControlSend("{" KeyPokestop "}", , GameWindow)
++                Potion()
++            }
+         }
++    } catch as e {
++        SwitchDebug("SWITCH_ERROR", "phase=trigger_action source=" source, e)
+     }
+ }
+ 
+@@ -110,7 +115,7 @@ Acao_RightThumb() {
+ ; --- HOTKEYS PARA TECLADO E MOUSE ---
+ #HotIf WinActive(GameWindow)
+ XButton1:: Acao_Bumpers()  ; Botão lateral 1 do mouse: Combo (depende do modo)
+-XButton2:: Acao_Gatilhos() ; Botão lateral 2 do mouse: Revive/Troca Time (depende do modo)
++XButton2:: Acao_Gatilhos("mouse") ; Botão lateral 2 do mouse: Revive/Troca Time (depende do modo)
+ #HotIf
+ 
+ ; Carrega o motor do controle
+diff --git a/src/hoenn_engine.ahk b/src/hoenn_engine.ahk
+index 8621364..1903aaa 100644
+--- a/src/hoenn_engine.ahk
++++ b/src/hoenn_engine.ahk
+@@ -2,7 +2,7 @@
+ #Include core_actions.ahk
+ #Include logger.ahk
+ 
+-global TimeAtual := 1          ; Agora pode ser 1, 2 ou 3
++global TimeAtual := 1          ; Time solicitado (1, 2 ou 3); entrada visual não confirmada
+ global isRodizioAtivo := false ; Trava de segurança
+ global TankAtualTime2_33 := 4  ; Específico para o modo 3-3
+ global StatusText
+@@ -27,82 +27,107 @@ global Hoenn222_TeamLastUsageTick := Map(1, 0, 2, 0, 3, 0)
+ 
+ TrocarTimeHoenn(totalTimes := 2) {
+     global TimeAtual, TankAtualTime2_33, StatusText
+-    global Hoenn222_State, Hoenn222_StateStartTick, Hoenn222_TankEnterTick, Hoenn222_LastTeamSwitchTick
+-    global Hoenn222_TeamDuration, Hoenn222_TeamLastUsageTick, Hoenn222_TeamUsageInterval
+-    global Hoenn222_DebtMs
+-
+-    ; Proteção de duplo clique rápido (1000ms) em vez de bloqueio absoluto de estado
+-    if (totalTimes == 3 && (A_TickCount - Hoenn222_LastTeamSwitchTick < 1000)) {
+-        return false
+-    }
++    global GameWindow, KeyPokestop, KeyFullDef
++    global Hoenn222_State, Hoenn222_StateStartTick, Hoenn222_LastTeamSwitchTick, Hoenn222_DebtMs
+ 
+-    ; Ciclo de troca (1->2->3->1 ou 1->2->1)
+-    TimeAtual += 1
+-    if (TimeAtual > totalTimes) {
+-        TimeAtual := 1
++    ; Apenas validação/envio/commit são atômicos. A interface não participa da decisão.
++    previousCritical := A_IsCritical
++    Critical("On")
++    try {
++        switchTick := A_TickCount
++        previousTeam := TimeAtual
++        SwitchDebug("SWITCH_REQUESTED", "from=" previousTeam " total=" totalTimes " state=" Hoenn222_State)
++        if ((totalTimes != 2 && totalTimes != 3) || previousTeam < 1 || previousTeam > 3) {
++            SwitchDebug("SWITCH_REJECTED", "reason=invalid_team total=" totalTimes " from=" previousTeam)
++            return false
++        }
++        if (totalTimes == 3 && Hoenn222_LastTeamSwitchTick > 0
++            && switchTick - Hoenn222_LastTeamSwitchTick < 1000) {
++            SwitchDebug("SWITCH_REJECTED", "reason=debounce elapsed_ms=" (switchTick - Hoenn222_LastTeamSwitchTick))
++            return false
++        }
++        nextTeam := (previousTeam >= totalTimes) ? 1 : previousTeam + 1
++        nextKey := (totalTimes == 3) ? (nextTeam * 2 - 1) : ((nextTeam == 1) ? 1 : TankAtualTime2_33)
++        previousSwitchTick := Hoenn222_LastTeamSwitchTick
++        previousState := Hoenn222_State
++        previousStateStartTick := Hoenn222_StateStartTick
++        previousDebt := Hoenn222_DebtMs
++
++        ; A janela pode desaparecer entre a validação e ControlSend: tratar ambos os casos.
++        if !WinExist(GameWindow) {
++            SwitchDebug("SWITCH_REJECTED", "reason=no_window window=" GameWindow)
++            return false
++        }
++        SwitchDebug("SWITCH_COMMAND_BEGIN", "from=" previousTeam " to=" nextTeam " key=" nextKey " window=" GameWindow)
++        try {
++            ControlSend("{" nextKey "}", , GameWindow)
++        } catch as e {
++            SwitchDebug("SWITCH_COMMAND_END", "result=failed to=" nextTeam " key=" nextKey)
++            SwitchDebug("SWITCH_ERROR", "phase=primary_command", e)
++            SwitchDebug("SWITCH_REJECTED", "reason=send_failed")
++            return false
++        }
++        SwitchDebug("SWITCH_COMMAND_END", "result=requested_only to=" nextTeam " key=" nextKey)
++
++        ; Representa o envio solicitado, NÃO uma confirmação visual de entrada no jogo.
++        TimeAtual := nextTeam
++        if (totalTimes == 3) {
++            Hoenn222_LastTeamSwitchTick := switchTick
++            Hoenn222_State := "WAITING_COMBO"
++            Hoenn222_StateStartTick := switchTick
++        }
++        SwitchDebug("SWITCH_STATE_UPDATED", "requested_team=" TimeAtual " visual_confirmation=unknown")
++    } finally {
++        Critical(previousCritical)
+     }
+ 
+-    ; Atualizar status
+-    if (totalTimes == 2) {
+-        StatusText := "Modo: Hoenn 3-3 - Time: " TimeAtual
+-        LogTeamSwitch(TimeAtual, "3-3")
+-    } else {
+-        StatusText := "Modo: Hoenn 2-2-2 - Time: " TimeAtual
+-        LogTeamSwitch(TimeAtual, "2-2-2")
+-        
+-        ; --- ATUALIZAÇÃO DO CRONÔMETRO 2-2-2 ---
+-        timeAnterior := (TimeAtual == 1) ? 3 : (TimeAtual - 1)
+-        
+-        ; Calcula duração do time que estava em campo
+-        if (Hoenn222_LastTeamSwitchTick > 0) {
+-            Hoenn222_TeamDuration[timeAnterior] := A_TickCount - Hoenn222_LastTeamSwitchTick
++    ; Preservar a sequência original; uma falha auxiliar não cancela as ações seguintes.
++    for key in [KeyPokestop, KeyFullDef] {
++        try {
++            ControlSend("{" key "}", , GameWindow)
++        } catch as e {
++            SwitchDebug("SWITCH_ERROR", "phase=post_command key=" key, e)
+         }
++    }
++    if (totalTimes == 3) {
++        AtualizarCronometroAposTroca(nextTeam, previousTeam, switchTick, previousSwitchTick,
++            previousState, previousStateStartTick, previousDebt)
++    }
++    try {
++        StatusText := "Modo: Hoenn " ((totalTimes == 3) ? "2-2-2" : "3-3") " - Time: " TimeAtual
++        LogTeamSwitch(nextTeam, (totalTimes == 3) ? "2-2-2" : "3-3")
++    } catch as e {
++        SwitchDebug("SWITCH_ERROR", "phase=team_logger", e)
++    }
++    return true
++}
+ 
+-        ; Calcula intervalo desde a última vez que este NOVO time entrou
+-        if (Hoenn222_TeamLastUsageTick[TimeAtual] > 0) {
+-            Hoenn222_TeamUsageInterval[TimeAtual] := A_TickCount - Hoenn222_TeamLastUsageTick[TimeAtual]
+-        }
++AtualizarCronometroAposTroca(nextTeam, previousTeam, switchTick, previousSwitchTick,
++    previousState, previousStateStartTick, previousDebt) {
++    global Hoenn222_TeamDuration, Hoenn222_TeamLastUsageTick, Hoenn222_TeamUsageInterval
++    global Hoenn222_TankEnterTick, Hoenn222_DebtMs
+ 
+-        ; Atualiza referências
+-        Hoenn222_TeamLastUsageTick[TimeAtual] := A_TickCount
+-        Hoenn222_LastTeamSwitchTick := A_TickCount
+-        Hoenn222_TankEnterTick[TimeAtual] := A_TickCount
+-        
+-        ; Calcula dívida do estado anterior
+-        if (Hoenn222_State == "WAITING_TEAM_SWITCH" || Hoenn222_State == "WAITING_COMBO") {
+-            actualElapsedMs := A_TickCount - Hoenn222_StateStartTick
+-            baseTargetMs := GetHoenn222BaseTargetMs(Hoenn222_State, timeAnterior)
+-            effectiveTargetMs := baseTargetMs + Hoenn222_DebtMs
+-            Hoenn222_DebtMs := Max(0, effectiveTargetMs - actualElapsedMs)
++    ; Dívida e estatísticas são independentes; preservar a dívida anterior se o cálculo falhar.
++    try {
++        if (previousState == "WAITING_TEAM_SWITCH" || previousState == "WAITING_COMBO") {
++            targetMs := GetHoenn222BaseTargetMs(previousState, previousTeam) + previousDebt
++            Hoenn222_DebtMs := Max(0, targetMs - (switchTick - previousStateStartTick))
+         }
+-        
+-        Hoenn222_State := "WAITING_COMBO"
+-        Hoenn222_StateStartTick := A_TickCount
+-        ; ---------------------------------------
++    } catch as e {
++        SwitchDebug("SWITCH_ERROR", "phase=debt", e)
+     }
+-
+-    ; Manda o primeiro do time para fora
+-    if (totalTimes == 3) {
+-        ; Lógica 2-2-2
+-        if (TimeAtual == 1) {
+-            ControlSend("{1}", , GameWindow)
+-        } else if (TimeAtual == 2) {
+-            ControlSend("{3}", , GameWindow)
+-        } else if (TimeAtual == 3) {
+-            ControlSend("{5}", , GameWindow)
++    try {
++        if (previousSwitchTick > 0) {
++            Hoenn222_TeamDuration[previousTeam] := switchTick - previousSwitchTick
+         }
+-    } else {
+-        ; Lógica 3-3 (Mantendo a otimização de Tank no Time 2)
+-        if (TimeAtual == 1) {
+-            ControlSend("{1}", , GameWindow)
+-        } else {
+-            ControlSend("{" TankAtualTime2_33 "}", , GameWindow)
++        if (Hoenn222_TeamLastUsageTick[nextTeam] > 0) {
++            Hoenn222_TeamUsageInterval[nextTeam] := switchTick - Hoenn222_TeamLastUsageTick[nextTeam]
+         }
++        Hoenn222_TeamLastUsageTick[nextTeam] := switchTick
++        Hoenn222_TankEnterTick[nextTeam] := switchTick
++    } catch as e {
++        SwitchDebug("SWITCH_ERROR", "phase=timer_statistics", e)
+     }
+-    ControlSend("{" KeyPokestop "}", , GameWindow)
+-    ControlSend("{" KeyFullDef "}", , GameWindow)
+-    
+-    return true
+ }
+ 
+ ; --- MODO 3-3 (O QUE VOCÊ JÁ TINHA) ---
+diff --git a/src/mapeamento-controle.ahk b/src/mapeamento-controle.ahk
+index 325df82..d75d5ab 100644
+--- a/src/mapeamento-controle.ahk
++++ b/src/mapeamento-controle.ahk
+@@ -11,35 +11,13 @@ GameLoop() {
+     static buttons_pressed := Map()
+     State := XInput_GetState(0)
+     if !State {
+-        if WinExist(GameWindow) {
+-            WinGetPos(&winX, &winY, , , GameWindow)
+-            CoordMode("ToolTip", "Screen")
+-            ToolTip("Controle Desconectado", winX + 210, winY)
+-        } else {
+-            ToolTip("Controle Desconectado", 210, 0)
+-        }
++        AtualizarTooltipsControle(false)
+         return
+     }
+ 
+     isGameActive := WinExist(GameWindow)
+ 
+     if (isGameActive) {
+-        ; Pega a posição da janela do jogo para exibir o texto nela
+-        WinGetPos(&winX, &winY, , , GameWindow)
+-        CoordMode("ToolTip", "Screen")
+-        
+-        textoExibicao := StatusText
+-        if (ModoAtual == "Hoenn222") {
+-            textoExibicao := GetHoenn222Tooltip()
+-            textoCentral := GetHoenn222CentralTooltip()
+-            if (textoCentral != "") {
+-                ToolTip(textoCentral, winX + PlayerOriginX + Hoenn222CenterOffsetX, winY + PlayerOriginY + Hoenn222CenterOffsetY, 2)
+-            } else {
+-                ToolTip(, , , 2)
+-            }
+-        }
+-        ToolTip(textoExibicao, winX + 210, winY + 30, 1)
+-        
+         ; Movimento analógico
+         if (State.sThumbLY > DeadzoneMove || State.sThumbRY > DeadzoneMove) {
+             (wasd_active["w"] ? "" : (ControlSend("{w down}", , GameWindow), wasd_active["w"] := true))
+@@ -68,7 +46,7 @@ GameLoop() {
+     ; Gatilhos (Triggers)
+     if ((State.bRightTrigger > 200 || State.bLeftTrigger > 200) && isGameActive) {
+         if !buttons_pressed.Has("Triggers") {
+-            SetTimer(() => Acao_Gatilhos(), -1), buttons_pressed["Triggers"] := true
++            SetTimer(() => Acao_Gatilhos("controller"), -1), buttons_pressed["Triggers"] := true
+         }
+     } else if buttons_pressed.Has("Triggers")
+         buttons_pressed.Delete("Triggers")
+@@ -144,6 +122,46 @@ GameLoop() {
+         }
+     } else if buttons_pressed.Has("Back")
+         buttons_pressed.Delete("Back")
++
++    ; Despachar os botões antes de renderizar; falhas da interface ficam isoladas.
++    AtualizarTooltipsControle()
++}
++
++AtualizarTooltipsControle(connected := true) {
++    static lastError := ""
++    try {
++        if !connected {
++            if WinExist(GameWindow) {
++                WinGetPos(&winX, &winY, , , GameWindow)
++                CoordMode("ToolTip", "Screen")
++                ToolTip("Controle Desconectado", winX + 210, winY)
++            } else {
++                ToolTip("Controle Desconectado", 210, 0)
++            }
++        } else if WinExist(GameWindow) {
++            WinGetPos(&winX, &winY, , , GameWindow)
++            CoordMode("ToolTip", "Screen")
++            textoExibicao := StatusText
++            if (ModoAtual == "Hoenn222") {
++                textoExibicao := GetHoenn222Tooltip()
++                textoCentral := GetHoenn222CentralTooltip()
++                if (textoCentral != "") {
++                    ToolTip(textoCentral, winX + PlayerOriginX + Hoenn222CenterOffsetX, winY + PlayerOriginY + Hoenn222CenterOffsetY, 2)
++                } else {
++                    ToolTip(, , , 2)
++                }
++            }
++            ToolTip(textoExibicao, winX + 210, winY + 30, 1)
++        }
++        lastError := ""
++    } catch as e {
++        ; Registrar só a primeira ocorrência de uma falha persistente, não cada frame.
++        errorId := e.What ":" e.Line ":" e.Message
++        if (errorId != lastError) {
++            lastError := errorId
++            SwitchDebug("SWITCH_ERROR", "phase=tooltip", e)
++        }
++    }
+ }
+ 
+ ; --- FUNÇÕES DO CRONÔMETRO HOENN 2-2-2 ---
+diff --git a/src/logger.ahk b/src/logger.ahk
+index 3769236..bc939b6 100644
+--- a/src/logger.ahk
++++ b/src/logger.ahk
+@@ -2,17 +2,43 @@
+ 
+ global LogFolder := A_ScriptDir "\logs"
+ 
+-if !DirExist(LogFolder) {
+-    DirCreate(LogFolder)
++; Diagnóstico temporário e independente do logger de sessões.
++global SwitchDebugEnabled := true
++global SwitchDebugFile := A_Temp "\macro_switch_debug.log"
++
++SwitchDebug(event, details := "", err := 0) {
++    global SwitchDebugEnabled, SwitchDebugFile
++    try {
++        if !SwitchDebugEnabled
++            return
++        if IsObject(err) {
++            details .= " message=" err.Message " function=" err.What " line=" err.Line " file=" err.File
++        }
++        details := StrReplace(StrReplace(details, "`r", " "), "`n", " ")
++        FileAppend(FormatTime(, "yyyy-MM-dd HH:mm:ss") " tick=" A_TickCount " pid=" ProcessExist()
++            " | " event " | " details "`n", SwitchDebugFile, "UTF-8")
++    } catch {
++        ; Nem arquivo indisponível, nem formatação do diagnóstico podem bloquear comandos.
++    }
++}
++
++try {
++    if !DirExist(LogFolder)
++        DirCreate(LogFolder)
++} catch as e {
++    SwitchDebug("SWITCH_ERROR", "phase=logger_init", e)
+ }
+ 
+ global CurrentSessionLogFile := LogFolder "\farm_log_" FormatTime(, "yyyy-MM-dd_HH-mm-ss") ".txt"
+ 
+ LogAction(message) {
+     global CurrentSessionLogFile
+-    currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+-    
+-    FileAppend(currentTime " | " message "`n", CurrentSessionLogFile)
++    try {
++        currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
++        FileAppend(currentTime " | " message "`n", CurrentSessionLogFile)
++    } catch as e {
++        SwitchDebug("SWITCH_ERROR", "phase=session_logger", e)
++    }
+ }
+ 
+ global StartComboTick := 0
+@@ -34,5 +60,5 @@ LogTeamSwitch(newTeam, modo) {
+         StartComboTick := 0
+     }
+ 
+-    LogAction("TEAM SWITCH | Entrando Time: " newTeam)
++    LogAction("TEAM SWITCH | Solicitado Time: " newTeam " | Entrada visual: nao confirmada")
+ }
