@@ -12,6 +12,7 @@ global DeadzoneMove := 20000
 global SleepAfterCombo := 3000
 global SleepAfterSwitch := 800
 global SleepAfterSecondCombo := 3000
+global SleepAfterTankCombo := 2700
 
 ; Teclas para ações
 global KeyPokestop := "c"
@@ -33,5 +34,5 @@ global KeyPokeMoveF6 := "f6"
 global TileSize := 70
 
 ; Coordenadas do personagem
-global PlayerOriginX := 970
-global PlayerOriginY := 410
+global PlayerOriginX := 936
+global PlayerOriginY := 402

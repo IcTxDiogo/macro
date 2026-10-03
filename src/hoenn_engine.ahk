@@ -1,5 +1,6 @@
 #Requires AutoHotkey v2.0
 #Include core_actions.ahk
+#Include logger.ahk
 
 global TimeAtual := 1          ; Agora pode ser 1, 2 ou 3
 global isRodizioAtivo := false ; Trava de segurança
@@ -20,8 +21,10 @@ TrocarTimeHoenn(totalTimes := 2) {
     ; Atualizar status
     if (totalTimes == 2) {
         StatusText := "Modo: Hoenn 3-3 - Time: " TimeAtual
+        LogTeamSwitch(TimeAtual, "3-3")
     } else {
         StatusText := "Modo: Hoenn 2-2-2 - Time: " TimeAtual
+        LogTeamSwitch(TimeAtual, "2-2-2")
     }
 
     ; Manda o primeiro do time para fora
@@ -70,6 +73,8 @@ ExecutarRodizio33(p1, p2, p3) {
     global isRodizioAtivo, TimeAtual, TankAtualTime2_33
     isRodizioAtivo := true
 
+    LogComboStart(TimeAtual, "3-3")
+
     ComboSimples()
     Sleep(SleepAfterCombo)
 
@@ -111,8 +116,10 @@ ExecutarRodizio222(p1, p2) {
     global isRodizioAtivo, TimeAtual, comboMrMime
     isRodizioAtivo := true
 
+    LogComboStart(TimeAtual, "2-2-2")
+
     ComboSimples() ; Bate com o p1 (que já está fora)
-    Sleep(SleepAfterCombo)
+    Sleep(SleepAfterTankCombo)
 
     ControlSend("{" p2 "}", , GameWindow) ; Chama p2
     Sleep(SleepAfterSwitch)
