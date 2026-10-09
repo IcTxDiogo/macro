@@ -15,6 +15,8 @@ param(
     [int]$LimiteMs = 400
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'fontes.ps1')
+Test-IndicesDeInclude $SourceRoot
 
 function Read-TestSource([string]$relativePath) {
     $source = Get-Content -LiteralPath (Join-Path $SourceRoot $relativePath) -Raw -Encoding UTF8
@@ -25,10 +27,10 @@ function Read-TestSource([string]$relativePath) {
 $main = Read-TestSource 'main.ahk'
 $main = $main.Substring($main.IndexOf('TrocarModo() {'))
 $main = $main.Substring(0, $main.IndexOf('; --- HOTKEYS PARA TECLADO E MOUSE ---'))
-$mapping = Read-TestSource 'src/mapeamento-controle.ahk'
+$mapping = Read-ModulosJuntos $SourceRoot $script:ModulosInterface { param($m) Read-TestSource $m }
 $mapping = [regex]::Replace($mapping, '(?m)^\^Esc::.*\r?\n|^SetTimer\(GameLoop, 30\).*\r?\n', '')
 $logger = Read-TestSource 'src/logger.ahk'
-$engine = Read-TestSource 'src/hoenn_engine.ahk'
+$engine = Read-ModulosJuntos $SourceRoot $script:ModulosMotor { param($m) Read-TestSource $m }
 $source = (Read-TestSource 'config.ahk') + "`r`n" + $logger + "`r`n" + (Read-TestSource 'src/core_actions.ahk') + "`r`n" + $engine + "`r`n" + $main + "`r`n" + $mapping
 
 # Mesmas fronteiras de I/O do runner isolado, MENOS SetTimer, Sleep e A_TickCount.

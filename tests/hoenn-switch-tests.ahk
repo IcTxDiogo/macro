@@ -732,6 +732,9 @@ RunTests() {
             fora += CdRateOf(i) >= 1.0 ? 1 : 0
         Assert(fora <= 1, "K no maximo um Pokemon fora da Ball: " fora)
         Assert(InStr(DebugText(), "CD_CAST"), "K cast recorded in the diagnostics")
+        ; Entrada em campo (chamada do secundario): o CD que o modelo espera fica no log
+        ; para ser comparado com os contadores da barra de golpes do jogo.
+        Assert(RegExMatch(DebugText(), "CD_ENTRADA \| slot=2 time=1 papel=sec cd_modelo_ms=\d+ taxa="), "K entrada do secundario registrada")
         Pass("K the combo registers both casts on the right slots")
 
 ; --- INDICADOR E DECISAO DO BOTAO: A MESMA RESPOSTA ---
@@ -837,6 +840,7 @@ RunTests() {
         Assert(!Hoenn222_SwitchArmed, "P a thread descartavel consome o pedido")
         AssertAcceptedSequence()
         Assert(Hoenn222_State == "WAITING_COMBO" && InStr(DebugText(), "SWITCH_FIRED"), "P a troca antecipada cumpriu a sequencia de sempre")
+        Assert(RegExMatch(DebugText(), "CD_ENTRADA \| slot=3 time=2 papel=tank cd_modelo_ms=\d+ taxa="), "P entrada do tank novo registrada na troca")
         Pass("P gatilho em amarelo arma e troca sozinho no instante do verde")
 
         ; TROCAR TIME verde: troca na hora, sem armar.
