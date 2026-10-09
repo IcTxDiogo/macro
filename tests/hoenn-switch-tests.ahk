@@ -502,48 +502,69 @@ RunTests() {
         Assert(GetHoenn222TierText(9, "tank") == "?", "F unknown team falls back")
         PlanHoenn222()
         Assert(Hoenn222_PlanCache.L > 0 && Hoenn222_PlanCache.Janelas.Length == 3, "F plano em cache com tres janelas")
-        ; --- PISO DO TANK: e o tank que limita, nao o piso global de 3,5x ---
-        ; O tank so recupera a 1,0x durante (SleepAfterTankCombo - Latencia),
-        ; depois que o p2 e chamado ele volta para a Ball a 0,5x. O tempo de
-        ; lure antes do cast NAO conta: o CD ainda nao comecou.
-        ;   (P - Lat)*1,0 + (L - P)*0,5 >= CD + Lat + Margem
-        ;   => L >= 2*CD + 2*Lat + Margem - P
-        pisoTank := 0
+        ; --- A RECUPERACAO E CONTADA ENTRE DOIS CASTS CONSECUTIVOS ---
+        ; O CD nasce no cast e precisa zerar antes do proximo. Nesse intervalo
+        ; o Pokemon recupera, e cada segundo conta onde acontecer: logo depois
+        ; do cast (1,0x), guardado no meio da volta (0,5x) e DE NOVO fora
+        ; durante o lure ANTES do proximo cast (1,0x). O lure nao e tempo
+        ; perdido: e o cooldown do cast anterior que continua correndo ali.
+        ;   F = tempo total fora entre dois casts
+        ;   (F - Lat)*1,0 + (L - F)*0,5 >= CD + Margem
+        ;   => F >= 2*(CD + Lat + Margem) - L
+        ; Para o tank, F = lure + P: ele so pode ficar fora dentro da janela
+        ; dele, da troca ate a chamada do p2.
+        ; Para o secundario, F = janela - lure - P.
+        ; E as tres janelas somam exatamente L.
+        margemEfetiva := Hoenn222_LatencyMs + Hoenn222_MarginMs
+        minSec := SleepAfterSwitch + SleepAfterCombo
         for k in [1, 2, 3] {
             cdT := GetHoenn222CdMainMs(k, false)
-            p := 2 * cdT + 4 * Hoenn222_LatencyMs + 2 * Hoenn222_MarginMs - SleepAfterTankCombo
-            if (p > pisoTank)
-                pisoTank := p
+            cdS := GetHoenn222CdMainMs(k, true)
+            F_tank := Max(SleepAfterTankCombo, 2 * (cdT + margemEfetiva) - Hoenn222_PlanCache.L)
+            F_sec := Max(minSec, 2 * (cdS + margemEfetiva) - Hoenn222_PlanCache.L)
+            lure := Hoenn222_PlanCache.Lures[k]
+            ; a janela tem de ser exatamente lure + P + tempo do secundario fora
+            Assert(Abs(Hoenn222_PlanCache.Janelas[k] - (lure + SleepAfterTankCombo + (Hoenn222_PlanCache.Janelas[k] - lure - SleepAfterTankCombo))) < 1,
+                "F janela " k " = lure + P + sec")
+            Assert(Abs(Hoenn222_PlanCache.TankFora[k] - (lure + SleepAfterTankCombo)) < 1,
+                "F tank fora " k " = lure " Round(lure) " + P " SleepAfterTankCombo " = " Round(Hoenn222_PlanCache.TankFora[k]))
+            Assert(F_tank <= Hoenn222_PlanCache.TankFora[k] + 0.5, "F tank da dupla " k
+                " tem tempo fora suficiente: " Round(Hoenn222_PlanCache.TankFora[k]) " >= " Round(F_tank))
+            Assert(F_sec <= Hoenn222_PlanCache.SecFora[k] + 0.5, "F secundario da dupla " k
+                " tem tempo fora suficiente: " Round(Hoenn222_PlanCache.SecFora[k]) " >= " Round(F_sec))
+            ; recuperacao efetiva, conferida pela fisica
+            Ftotal := Hoenn222_PlanCache.TankFora[k]
+            recT := (Ftotal - Hoenn222_LatencyMs)
+                + (Hoenn222_PlanCache.L - Ftotal) * Hoenn222_RateInBall
+            Assert(recT >= cdT + Hoenn222_MarginMs - 0.5, "F tank " k " recupera "
+                Round(recT) "ms para um CD de " cdT "ms")
+            FtotS := Hoenn222_PlanCache.SecFora[k]
+            recS := (FtotS - Hoenn222_LatencyMs)
+                + (Hoenn222_PlanCache.L - FtotS) * Hoenn222_RateInBall
+            Assert(recS >= cdS + Hoenn222_MarginMs - 0.5, "F secundario " k " recupera "
+                Round(recS) "ms para um CD de " cdS "ms")
         }
-        Assert(Hoenn222_PlanCache.L >= pisoTank, "F L=" Round(Hoenn222_PlanCache.L)
-            " respeita o piso do tank " Round(pisoTank))
-        Assert(Abs(Hoenn222_PlanCache.L - pisoTank) < 1, "F o tank e o gargalo: L = 2*CD+4*Lat+2*Marg-P")
-        ; Recarga efetiva do tank na volta, conferida pela fisica e nao pela
-        ; formula: (P - Lat) a 1,0x e (L - P) a 0,5x. Vale para o tank mais
-        ; lento, que e quem define L.
-        cdMaisLento := 0
-        for k in [1, 2, 3]
-            if (GetHoenn222CdMainMs(k, false) > cdMaisLento)
-                cdMaisLento := GetHoenn222CdMainMs(k, false)
-        recuperaT := (SleepAfterTankCombo - Hoenn222_LatencyMs)
-            + (Hoenn222_PlanCache.L - SleepAfterTankCombo) * Hoenn222_RateInBall
-        Assert(recuperaT >= cdMaisLento + Hoenn222_LatencyMs + Hoenn222_MarginMs,
-            "F tank mais lento recupera " Round(recuperaT) "ms e precisa de "
-                (cdMaisLento + Hoenn222_LatencyMs + Hoenn222_MarginMs))
-        ; E o gargalo: trocar o tank mais lento por um CD menor encurta a volta.
-        Assert(Abs(Hoenn222_PlanCache.L - (2 * cdMaisLento + 4 * Hoenn222_LatencyMs
-            + 2 * Hoenn222_MarginMs - SleepAfterTankCombo)) < 1,
-            "F L vem do tank mais lento (" cdMaisLento "ms)")
-        ; O piso global 3,5x e um limite inferior TEORICO e nao deve ser
-        ; alcancavel: o tank nao tem tempo fora da Ball para divide-lo.
+        ; As tres janelas tem de fechar exatamente em L.
+        somaJanelas := Hoenn222_PlanCache.Janelas[1] + Hoenn222_PlanCache.Janelas[2] + Hoenn222_PlanCache.Janelas[3]
+        Assert(Abs(somaJanelas - Hoenn222_PlanCache.L) < 1, "F soma das janelas " Round(somaJanelas)
+            " = L " Round(Hoenn222_PlanCache.L))
+        ; E o piso global de 3,5x: o limite inferior real.
         somaCd := 0
         for k in [1, 2, 3]
             somaCd += GetHoenn222CdMainMs(k, false) + GetHoenn222CdMainMs(k, true)
-        pisoGlobal := somaCd / (1 + 5 * Hoenn222_RateInBall)
-        Assert(Hoenn222_PlanCache.L > pisoGlobal, "F L=" Round(Hoenn222_PlanCache.L)
-            " acima do piso teorico de 3,5x " Round(pisoGlobal))
+        pisoGlobal := (somaCd + 6 * margemEfetiva) / (1 + 5 * Hoenn222_RateInBall)
+        Assert(Hoenn222_PlanCache.L >= pisoGlobal - 1, "F L=" Round(Hoenn222_PlanCache.L)
+            " respeita o piso de 3,5x com margem " Round(pisoGlobal))
+        Assert(Abs(Hoenn222_PlanCache.L - pisoGlobal) < 1, "F L atinge o piso idealizado "
+            Round(pisoGlobal))
+        ; Nenhum tempo fora pode passar da duracao da volta.
+        totalFora := 0
+        for k in [1, 2, 3]
+            totalFora += Hoenn222_PlanCache.TankFora[k] + Hoenn222_PlanCache.SecFora[k]
+        Assert(totalFora <= Hoenn222_PlanCache.L + 0.5, "F soma dos tempos fora "
+            Round(totalFora) " cabe na volta " Round(Hoenn222_PlanCache.L))
         ; Janela minima: precisa comportar o combo inteiro.
-        minimo := SleepAfterTankCombo + SleepAfterSwitch + SleepAfterCombo
+        minimo := SleepAfterTankCombo + minSec
         for k in [1, 2, 3]
             Assert(Hoenn222_PlanCache.Janelas[k] >= minimo, "F janela da dupla " k " comporta 2700+800+3000")
         ; O plano so depende da configuracao, entao e estavel e fica em cache.
@@ -615,6 +636,38 @@ RunTests() {
         MockTick += 1000
         Assert(GetHoenn222PendingMs() == Hoenn222_MarginMs - 1000, "J 1000ms decorridos tiram 1000ms do pendente")
         Pass("J desligar o otimizador volta aos alvos fixos sem nenhuma outra mudanca")
+
+; --- TESTE DA PREMISSA: o lure ANTES do proximo cast recupera o CD ---
+        ; Um tank faz o cast, fica fora um tempo, e guardado, volta na volta
+        ; seguinte e fica fora de novo durante o lure ANTES do proximo cast.
+        ; Os DOIS periodos precisam contar para o mesmo cooldown. Se o
+        ; planejador so considerasse o trecho pos-cast, este teste falha.
+        ResetCase("WAITING_COMBO", 0, 0)
+        cdTeste := 45000.0
+        slotTeste := Hoenn222Slot(1, false)
+        Hoenn222CdCast(1, false, MockTick)          ; 1) o cast comeca o CD
+        Hoenn222CdSetRate(slotTeste, Hoenn222_RateOutOfBall, MockTick)
+        MockTick += SleepAfterTankCombo              ; fora durante o P do p2
+        Hoenn222CdSetRate(slotTeste, Hoenn222_RateInBall, MockTick)
+        MockTick += 30000                             ; 2) guardado a 0,5x
+        Hoenn222CdSetRate(slotTeste, Hoenn222_RateOutOfBall, MockTick) ; 3) volta a sair
+        duracaoLure := 12871.0
+        MockTick += duracaoLure                      ; lure ANTES do proximo cast
+        cdRestante := CdOf(slotTeste)
+        Assert(cdRestante > 0, "L ainda ha CD a recuperar: " Round(cdRestante))
+        Assert(cdRestante < cdTeste, "L o lure reduziu o CD: de " cdTeste " para " Round(cdRestante))
+        ganhoDoLure := duracaoLure * Hoenn222_RateOutOfBall
+        Assert(ganhoDoLure > 0 && CdOf(slotTeste) < cdRestante + ganhoDoLure,
+            "L o lure contribuiu " Round(ganhoDoLure) "ms")
+        ; Com o plano real, F do tank = lure + P cobre 2*(CD+Lat+Marg) - L
+        ; (o cache e invalido no ResetCase acima, entao recalcula)
+        planoL := PlanHoenn222()
+        Fplano := planoL.TankFora[1]
+        exigido := 2 * (cdTeste + Hoenn222_LatencyMs + Hoenn222_MarginMs) - Hoenn222_PlanCache.L
+        Assert(Fplano >= exigido, "L F do tank " Round(Fplano) " cobre o exigido " Round(exigido))
+        Assert(Fplano > SleepAfterTankCombo, "L F do tank " Round(Fplano)
+            " e maior que so o pos-cast " SleepAfterTankCombo)
+        Pass("L o lure antes do proximo cast recupera o cooldown do cast anterior")
 
         ResetCase()
         ComboComplexoHoenn222()

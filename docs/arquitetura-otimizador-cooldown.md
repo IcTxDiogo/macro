@@ -49,10 +49,10 @@ campo. Sem isso os dois recuperariam a 1,0 ao mesmo tempo e a capacidade da
 volta passaria de 3,5× para 4,0× — foi exatamente esse o erro que inflou o
 planejador para 67 s.
 
-O Tank recupera a 1,0 durante todo o tempo em que está em campo, mas isso
-inclui o lure antes do cast — e lure **não** conta para o CD dele, porque o
-cooldown só começa a correr depois da skill. A recuperação que importa é
-apenas o trecho pós-cast, de `T0+250` até `T0+2700`: **2450 ms**.
+O Tank recupera a 1,0 durante **todo** o tempo em que está em campo: a
+espera de lure e os 2700 ms pós-cast. O lure **conta** para o CD dele — mas é
+o CD que nasceu no cast da volta **anterior**, não o que vai começar no cast
+que vem a seguir. Ver a seção 4.
 
 Não existe `PrepareMs`. A única restrição física implícita é que o combo não
 pode começar antes de `s_k` — o macro não impõe nada além disso.
@@ -88,35 +88,47 @@ sinalizar, não inventar.**
 
 ## 4. Planejamento global das três duplas
 
-Com `X = (L + w)/2`, `L` = volta, `w` = janela da dupla:
+A recuperação é contada **entre dois casts consecutivos** do mesmo Pokémon. Com
+`F` = tempo total fora da Ball nesse intervalo:
 
 ```
-Tank       : X ≥ cdTank + Λ + Δ                    (independe de p)
-Secundário : X ≥ cdSec  + 0,5·p + 0,5·Summon + Λ + Δ
-p = offset de T0 dentro da janela
-
-L = ΣX / 2        janela_k = 2·X_k − L
+(F − Λ)·1,0 + (L − F)·0,5   ≥   CD + Δ
+F  ≥  2·(CD + Λ + Δ) − L
 ```
 
-`Λ = Latency = 250`, `Δ = Margin = 250`.
+O `(F − Λ)` existe porque o congelamento de latência fica **dentro** do
+primeiro trecho fora da Ball. Λ e Δ entram uma vez cada.
 
-O termo do Tank **não depende de `p`**: o tempo antes do cast recupera o timer
-da volta anterior e é apagado pelo reset. Já o secundário paga `0,5·p` — quanto
-mais o jogador espera dentro da janela, mais tempo o secundário passa na Ball.
+Quem pode ficar fora, e quanto:
 
-Para as duplas do exemplo (Lendário/UR, UR/SR, SR/UR):
+| | tempo fora disponível | mínimo técnico |
+| --- | --- | --- |
+| Tank `k` | `lure_k + P` (da troca até a chamada do p2) | `P` |
+| Secundário `k` | `janela_k − lure_k − P` | `Gap + Post` |
 
-| Dupla | Tank exige | Secundário exige | Limita |
-| --- | --- | --- | --- |
-| Time 1 | 40,5 s | 45,0 s | secundário |
-| Time 2 | 43,5 s | 47,0 s | secundário |
-| Time 3 | 45,5 s | 45,0 s | **tank** |
+E as janelas fecham: `L = janela₁ + janela₂ + janela₃`, com
+`janela_k = lure_k + P + F_sec_k`.
 
-`L = 68,725 s`, janelas `21,23 / 25,23 / 22,28 s`.
+**O lure conta.** Ele acontece no meio do intervalo entre dois casts e
+recupera o cooldown que nasceu no cast anterior. Um erro anterior da auditoria
+afirmava o contrário e inflava a volta em 13 s.
 
-Isto responde ao ponto "um Pokémon ficar pronto antes do planejado é normal":
-no Time 3 é o **Tank** que limita, e o secundário fica pronto antes — a janela
-absorve essa folga em vez de desperdiçá-la.
+Não existe tempo fora "de graça": só um Pokémon está fora por vez, então dar
+mais lure ao tank é tirar tempo do secundário. No mínimo, cada janela é
+exatamente o que o par exige — e as três somam exatamente `L`.
+
+Para a composição principal auditada (SR/Lendário, SR/UR, SR/UR):
+
+| Dupla | Tank exige | Secundário exige | Janela | Lure |
+| --- | --- | --- | --- | --- |
+| Time 1 | 15,571 s | 5,571 s | 21,143 s | 12,871 s |
+| Time 2 | 15,571 s | 11,571 s | 27,143 s | 12,871 s |
+| Time 3 | 15,571 s | 11,571 s | 27,143 s | 12,871 s |
+
+`L = 75,429 s` — exatamente o piso idealizado `(ΣCD + 6·0,5) / 3,5`.
+
+Isto responde ao ponto "um Pokémon ficar pronto antes do planejado é normal": a
+janela de cada dupla absorve essa folga em vez de desperdiçá-la.
 
 ---
 

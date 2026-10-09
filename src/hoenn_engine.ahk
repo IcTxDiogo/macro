@@ -402,38 +402,65 @@ GetHoenn222SwitchTargetMs(timeIndex) {
 ; =============================================================================
 ; Depende so da configuracao, entao o resultado e estavel e fica em cache.
 ;
-; MODELO. Só um Pokémon fica fora da Ball por vez. Dentro da janela da dupla k:
-;   tank k fora desde a troca ate a chamada do p2
-;   p2 chamado em T0 + SleepAfterTankCombo; daí em diante quem está fora é o
-;   secundário, e o tank volta para a Ball.
-; Só existe um Pokémon fora da Ball, então a recuperação conjunta da volta é
-; 3,5x o tempo (1 a 1,0 + 5 a 0,5), nunca mais.
+; -----------------------------------------------------------------------------
+; MODELO
+; -----------------------------------------------------------------------------
+; Só um Pokémon fica fora da Ball por vez. Dentro da janela da dupla k:
 ;
-; RESTRIÇÃO DO TANK — a que realmente limita. O tempo de lure ANTES do cast não
-; conta para o CD dele: o cooldown só começa a correr depois da skill. O tank
-; só recupera a 1,0x durante o trecho pós-cast, de (T0+Λ) até (T0+P), ou seja
-; (P - Λ) ms. O resto da volta ele está na Ball a 0,5x. Recuperação da volta:
-;     (P - Λ)·1,0 + (L - P)·0,5   >=   CD + Λ + Δ
-; Isolando L:
-;     (L - P)·0,5   >=  CD + Λ + Δ − P + Λ
-;     L   >=  P + 2·(CD + 2·Λ + Δ − P)  =  2·CD + 4·Λ + 2·Δ − P
-; Λ pesa em dois lugares: encurta o trecho de 1,0× (dentro de P − Λ) e atrasa
-; o instante em que o CD zera, e por isso aparece 4×. Δ entra 2×, uma na
-; folga do lado esquerdo e outra ao isolar L.
-; Este é o piso real. O "piso 3,5x" (soma dos seis CDs / 3,5) é um limite
-; inferior teórico que NUNCA é atingido aqui: ele supõe que os seis Pokémon
-; possam dividir o tempo fora da Ball, mas o tank só tem P ms disso por volta.
+;   s_k ........... troca de time; o tank k SAI da Ball, o secundário continua
+;                   dentro. A partir daqui é o tank que recupera, e o CD que
+;                   ele recupera é o que começou no cast da volta ANTERIOR.
+;   T0_k .......... cast do tank; o CD novo passa a contar em T0_k + Λ
+;   T1_k = T0_k + P chamada do p2; o tank VOLTA para a Ball, o secundário SAI
+;   T2_k = T1_k + G cast do secundário; CD conta a partir de T2_k + Λ
+;   s_(k+1) ....... próxima troca; o secundário volta para a Ball
 ;
-; RESTRIÇÃO DO SECUNDÁRIO. Ele fica fora da Ball desde a chamada do p2 até a
-; próxima troca, ou seja (w - P) da janela w, e o resto da volta a 0,5x. O
-; Window ainda precisa comportar o combo inteiro. Recuperação da volta:
-;     (w - P)·1,0 + (L - w + P)·0,5  >=  CD + Δ
-;   =>  w >= 2·(CD + Δ) − L + P
-; E a janela ainda precisa comportar o combo inteiro: w >= P + Gap + Post.
+; Capacidade conjunta da volta: 1 a 1,0 + 5 a 0,5 = 3,5. Nunca mais que isso.
 ;
-; Os três janelas somam exatamente L. A sobra sobre o mínimo é lure: tempo do
-; tank em campo antes do combo, que é escolha do jogador e serve ao CD do
-; Pokémon da dupla anterior, não ao dele.
+; -----------------------------------------------------------------------------
+; PRINCÍPIO: a recuperação é contada ENTRE DOIS CASTS CONSECUTIVOS
+; -----------------------------------------------------------------------------
+; O cooldown do Pokémon na volta k nasce em T0_k e precisa zerar antes do
+; próximo T0. Nesse intervalo inteiro ele recupera, e cada segundo conta onde
+; quer que aconteça:
+;
+;   * logo depois do cast, ainda fora da Ball (1,0×)
+;   * guardado no meio da volta, dentro da Ball (0,5×)
+;   * na volta seguinte, de novo fora, durante o lure ANTES do próximo cast
+;
+; O lure não é tempo perdido: ele recupera o cooldown que começou no cast
+; anterior. F = tempo total fora da Ball entre dois casts consecutivos.
+;
+;     recuperação = (F - Λ)·1,0 + (L - F)·0,5
+;     (F - Λ) porque o congelamento de Λ fica DENTRO do primeiro trecho fora
+;
+;     (F - Λ) + (L - F)·0,5  >=  CD + Δ
+;     F  >=  2·(CD + Λ + Δ) − L
+;
+; Λ e Δ entram uma vez cada. Λ porque o CD não corre durante o congelamento;
+; Δ como a folga exigida no próximo cast.
+;
+; -----------------------------------------------------------------------------
+; QUEM PODE FICAR FORA, E QUANTO
+; -----------------------------------------------------------------------------
+; O tank só existe fora da Ball dentro da SUA janela, da troca até a chamada
+; do p2. Esse tempo é lure_k + P. Fora da janela ele está guardado, a 0,5.
+;     F_tank_k = lure_k + P        e lure_k >= 0
+;
+; O secundário fica fora de T1_k até a próxima troca, e precisa comportar
+; Gap + SleepAfterCombo:
+;     F_sec_k = janela_k − lure_k − P   e janela_k − lure_k − P >= Gap + Post
+;
+; -----------------------------------------------------------------------------
+; COMO AS TRÊS PARCELAS FECHAM
+; -----------------------------------------------------------------------------
+;     janela_k = lure_k + P + F_sec_k
+;     L = janela_1 + janela_2 + janela_3
+;
+; Cada janela é o que o tank e o secundário daquele par exigem, então as três
+; janelas têm tamanhos diferentes. O menor L que fecha essa soma é a volta
+; mínima sustentável — e ele coincide com o piso 3,5× quando a estrutura couber.
+;
 PlanHoenn222() {
     global Hoenn222_PlanCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
 
@@ -442,32 +469,26 @@ PlanHoenn222() {
 
     lat := Hoenn222_LatencyMs
     marg := Hoenn222_MarginMs
-    Pp := SleepAfterTankCombo                       ; tank fora depois do cast
-    minJanela := SleepAfterTankCombo + SleepAfterSwitch + SleepAfterCombo
+    margemEfetiva := lat + marg
+    Pp := SleepAfterTankCombo
+    minSec := SleepAfterSwitch + SleepAfterCombo   ; secundário precisa ficar fora até a troca
 
-    ; --- piso do tank: maximo entre as tres duplas
-    L := 0
-    timeIndex := 1
-    while timeIndex <= 3 {
-        cdTank := GetHoenn222CdMainMs(timeIndex, false)
-        pisoTank := 2 * cdTank + 4 * lat + 2 * marg - Pp
-        ; Isolamento de (P-Lat)*1,0 + (L-P)*0,5 >= CD + Lat + Marg.
-        if (pisoTank > L)
-            L := pisoTank
-        timeIndex += 1
-    }
+    cdTank := [GetHoenn222CdMainMs(1, false), GetHoenn222CdMainMs(2, false), GetHoenn222CdMainMs(3, false)]
+    cdSec := [GetHoenn222CdMainMs(1, true), GetHoenn222CdMainMs(2, true), GetHoenn222CdMainMs(3, true)]
 
-    ; --- piso dos secundarios: menor L com soma(janelas) <= L.
-    ; A soma das janelas é decrescente em L, então a busca converge sempre.
-    lo := minJanela * 3
-    hi := Max(L, lo) * 2 + lo
+    ; Soma das janelas em função de L. Diminui quando L cresce (CD maior exige
+    ; menos tempo fora), então a condição "soma <= L" vale a partir de um
+    ; único ponto. Bisseção acha o menor L que fecha.
+    minJanelas := Pp + minSec
+    lo := minJanelas * 3
+    hi := 500000.0
     while (lo < hi) {
         meio := (lo + hi) / 2
-        total := 0
+        total := 0.0
         timeIndex := 1
         while timeIndex <= 3 {
-            cdSec := GetHoenn222CdMainMs(timeIndex, true)
-            total += Max(minJanela, 2 * (cdSec + marg) - meio + Pp)
+            total += Max(Pp, 2 * (cdTank[timeIndex] + margemEfetiva) - meio)
+            total += Max(minSec, 2 * (cdSec[timeIndex] + margemEfetiva) - meio)
             timeIndex += 1
         }
         if (total <= meio)
@@ -475,39 +496,36 @@ PlanHoenn222() {
         else
             lo := meio + 1
     }
-    if (lo > L)
-        L := lo
+    L := hi
 
-    ; --- janelas finais
-    janelas := [0, 0, 0]
-    folgaLure := 0
+    ; Janelas e lure finais nesse L.
+    janelas := [0.0, 0.0, 0.0]
+    lures := [0.0, 0.0, 0.0]
+    tankFora := [0.0, 0.0, 0.0]
+    secFora := [0.0, 0.0, 0.0]
+    folgaLure := 0.0
     timeIndex := 1
     while timeIndex <= 3 {
-        cdSec := GetHoenn222CdMainMs(timeIndex, true)
-        janelas[timeIndex] := Max(minJanela, 2 * (cdSec + marg) - L + Pp)
-        folgaLure += L / 3 - janelas[timeIndex]
+        tankFora[timeIndex] := Max(Pp, 2 * (cdTank[timeIndex] + margemEfetiva) - L)
+        secFora[timeIndex] := Max(minSec, 2 * (cdSec[timeIndex] + margemEfetiva) - L)
+        lures[timeIndex] := tankFora[timeIndex] - Pp
+        janelas[timeIndex] := lures[timeIndex] + Pp + secFora[timeIndex]
+        folgaLure += lures[timeIndex]
         timeIndex += 1
     }
 
-    ; Inviabilidade real: a janela nem comporta o combo inteiro.
-    timeIndex := 1
-    while timeIndex <= 3 {
-        if (janelas[timeIndex] < minJanela) {
-            SwitchDebug("CD_PLAN_INFEASIVEL", "time=" timeIndex " janela=" Round(janelas[timeIndex])
-                " precisa_de=" minJanela " L=" Round(L))
-            janelas[timeIndex] := minJanela
-        }
-        timeIndex += 1
-    }
-
-    Hoenn222_PlanCache := { L: L, Janelas: janelas, FolgaLure: folgaLure, JanelaMinima: minJanela }
-    SwitchDebug("CD_PLAN", "L=" Round(L) " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3])
-        " lure_sobra=" Round(folgaLure)
-        " tank_fora_pos_cast=" Pp " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
-        " latency=" lat " margin=" marg)
+    ; Object literal em UMA linha: este build do AutoHotkey nao aceita
+    ; literais multi-linha.
+    Hoenn222_PlanCache := {L: L, Janelas: janelas, Lures: lures, TankFora: tankFora, SecFora: secFora, FolgaLure: folgaLure, JanelaMinima: minJanelas, MargemEfetiva: margemEfetiva}
+    SwitchDebug("CD_PLAN", "L=" Round(L)
+        " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3])
+        " lure=" Round(lures[1]) "," Round(lures[2]) "," Round(lures[3])
+        " tank_fora=" Round(tankFora[1]) "," Round(tankFora[2]) "," Round(tankFora[3])
+        " sec_fora=" Round(secFora[1]) "," Round(secFora[2]) "," Round(secFora[3])
+        " pos_cast=" Pp " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
+        " latencia=" lat " margem=" marg)
     return Hoenn222_PlanCache
 }
-
 ; Registro de eventos do CD, isolado: qualquer falha aqui não cancela o combo.
 Hoenn222CdRegistrarCast(timeIndex, secundario := false) {
     global Hoenn222_CdOptimizerEnabled

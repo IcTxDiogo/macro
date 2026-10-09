@@ -2,100 +2,118 @@
 # 1. MENOR VOLTA SUSTENTAVEL - busca binaria sobre o simulador
 ##############################################################################
 composicao                                            soma CD    piso 3,5x      MENOR L
-PRINCIPAL  SR45/Lend40, SR45/UR43, SR45/UR43          261.000   74.571,429       87,299
-CONFIG     Lend40/UR43, UR43/UR43, UR43/UR43          255.000   72.857,143       83,299
-TODOS 45s                                             270.000   77.142,857       87,299
-TANKS 50s  50/40, 50/43, 50/43                        276.000   78.857,143       97,299
-LENDARIOS  40/40, 40/43, 40/45                        248.000   70.857,143       77,299
-MISTURADO  45/40, 43/45, 43/50                        266.000   76.000,000       87,299
+PRINCIPAL  SR45/Lend40, SR45/UR43, SR45/UR43          261.000   74.571,429       75,428
+CONFIG     Lend40/UR43, UR43/UR43, UR43/UR43          255.000   72.857,143       73,714
+TODOS 45s                                             270.000   77.142,857       78,000
+TANKS 50s  50/40, 50/43, 50/43                        276.000   78.857,143       80,133
+LENDARIOS  40/40, 40/43, 40/45                        248.000   70.857,143       71,714
+MISTURADO  45/40, 43/45, 43/50                        266.000   76.000,000       76,857
 
 ##############################################################################
 # 2. CONFIRMACAO: 20 e 200 voltas no L minimo
 ##############################################################################
 PRINCIPAL  SR45/Lend40, SR45/UR43, SR45/UR43
-   L = 87,299s | janela/sec fora 26,400s | lure 0ms
-   20 voltas 87,299s | 200 voltas 5 primeiras 87,299s 5 ultimas 87,299s
-   casts 120 | violacoes 0 | maior CD no cast 250ms
+   L = 75,428s | janela/sec fora 3,800s | lure 38.615ms
+   20 voltas 75,429s | 200 voltas 5 primeiras 75,429s 5 ultimas 75,429s
+   casts 120 | violacoes 0 | maior CD no cast 0ms
 CONFIG     Lend40/UR43, UR43/UR43, UR43/UR43
-   L = 83,299s | janela/sec fora 25,066s | lure 0ms
-   20 voltas 83,299s | 200 voltas 5 primeiras 83,299s 5 ultimas 83,299s
-   casts 120 | violacoes 0 | maior CD no cast 250ms
+   L = 73,714s | janela/sec fora 3,800s | lure 25.758ms
+   20 voltas 73,715s | 200 voltas 5 primeiras 73,715s 5 ultimas 73,715s
+   casts 120 | violacoes 0 | maior CD no cast 0ms
 TODOS 45s
-   L = 87,299s | janela/sec fora 26,400s | lure 0ms
-   20 voltas 87,299s | 200 voltas 5 primeiras 87,299s 5 ultimas 87,299s
-   casts 120 | violacoes 0 | maior CD no cast 250ms
+   L = 78,000s | janela/sec fora 3,800s | lure 30.900ms
+   20 voltas 78,001s | 200 voltas 5 primeiras 78,001s 5 ultimas 78,001s
+   casts 120 | violacoes 0 | maior CD no cast 0ms
 TANKS 50s  50/40, 50/43, 50/43
-   L = 97,299s | janela/sec fora 29,733s | lure 0ms
-   20 voltas 97,299s | 200 voltas 5 primeiras 97,299s 5 ultimas 97,299s
-   casts 120 | violacoes 0 | maior CD no cast 250ms
+   L = 80,133s | janela/sec fora 3,800s | lure 54.500ms
+   20 voltas 80,134s | 200 voltas 5 primeiras 80,134s 5 ultimas 80,134s
+   casts 120 | violacoes 0 | maior CD no cast 0ms
 LENDARIOS  40/40, 40/43, 40/45
-   L = 77,299s | janela/sec fora 23,066s | lure 0ms
-   20 voltas 77,299s | 200 voltas 5 primeiras 77,299s 5 ultimas 77,299s
-   casts 120 | violacoes 0 | maior CD no cast 250ms
+   L = 71,714s | janela/sec fora 3,800s | lure 19.758ms
+   20 voltas 71,715s | 200 voltas 5 primeiras 71,715s 5 ultimas 71,715s
+   casts 120 | violacoes 0 | maior CD no cast 0ms
 MISTURADO  45/40, 43/45, 43/50
-   L = 87,299s | janela/sec fora 26,400s | lure 0ms
-   20 voltas 87,299s | 200 voltas 5 primeiras 87,299s 5 ultimas 87,299s
-   casts 120 | violacoes 0 | maior CD no cast 250ms
+   L = 76,857s | janela/sec fora 3,800s | lure 26.329ms
+   20 voltas 76,858s | 200 voltas 5 primeiras 76,858s 5 ultimas 76,858s
+   casts 120 | violacoes 0 | maior CD no cast 0ms
 
 ##############################################################################
 # 3. O PLANO ANTIGO ERA INVIÃ?VEL? (composicao CONFIG)
 ##############################################################################
-   menor L aceitavel = 83,299s | plano antigo = 67,462s | macro anterior = 86,500s
-   plano antigo 67,462s: 6 violacoes em 18 casts | maior CD pendente 8169ms
-      v0 tank s1: CD restante 0ms de um CD principal de 40000ms
-      v0 sec s2: CD restante 0ms de um CD principal de 43000ms
-      v0 tank s3: CD restante 0ms de um CD principal de 43000ms
-      v0 sec s4: CD restante 0ms de um CD principal de 43000ms
-   macro anterior 86,500s: 0 violacoes em 18 casts | maior CD pendente 0ms
-      v0 tank s1: CD restante 0ms de um CD principal de 40000ms
-      v0 sec s2: CD restante 0ms de um CD principal de 43000ms
-      v0 tank s3: CD restante 0ms de um CD principal de 43000ms
-      v0 sec s4: CD restante 0ms de um CD principal de 43000ms
+   menor L aceitavel = 73,714s | plano antigo = 67,462s | macro anterior = 86,500s
+   plano antigo 67,462s: janelas somam 111.225ms (precisa ser 67.463ms) | volta real 111,225s
+      violacoes 0 | maior CD no cast 0ms | casts 120
+      v5 tank s1: CD restante 0ms de um CD principal de 40000ms
+      v5 sec s2: CD restante 0ms de um CD principal de 43000ms
+      v5 tank s3: CD restante 0ms de um CD principal de 43000ms
+   macro anterior 86,500s: janelas somam 86.500ms (precisa ser 86.500ms) | volta real 86,500s
+      violacoes 0 | maior CD no cast 0ms | casts 120
+      v5 tank s1: CD restante 0ms de um CD principal de 40000ms
+      v5 sec s2: CD restante 0ms de um CD principal de 43000ms
+      v5 tank s3: CD restante 0ms de um CD principal de 43000ms
 
 ##############################################################################
 # 4. SENSIBILIDADE A MARGEM E A LATENCIA
 ##############################################################################
-   margem       0ms -> menor L   83,799s
-   margem     250ms -> menor L   83,299s
-   margem     500ms -> menor L   82,799s
-   margem    1000ms -> menor L   81,799s
-   latencia     0ms -> menor L   82,799s
-   latencia   250ms -> menor L   83,299s
-   latencia   500ms -> menor L   83,799s
-   latencia  1000ms -> menor L   84,799s
+   margem       0ms -> menor L   73,286s
+   margem     250ms -> menor L   73,714s
+   margem     500ms -> menor L   74,143s
+   margem    1000ms -> menor L   75,000s
+   latencia     0ms -> menor L   73,286s
+   latencia   250ms -> menor L   73,714s
+   latencia   500ms -> menor L   74,143s
+   latencia  1000ms -> menor L   75,000s
 
 ##############################################################################
 # 5. SENSIBILIDADE AO TEMPO POS-CAST DO TANK
 ##############################################################################
-   pos-cast   2700ms -> menor L   83,299s
-   pos-cast   4000ms -> menor L   81,999s
-   pos-cast   6000ms -> menor L   79,999s
-   pos-cast   8000ms -> menor L   77,999s
-   pos-cast  12000ms -> menor L   73,999s
+   pos-cast   2700ms -> menor L   73,714s
+   pos-cast   4000ms -> menor L   73,714s
+   pos-cast   6000ms -> menor L   73,714s
+   pos-cast   8000ms -> menor L   73,833s
+   pos-cast  12000ms -> menor L   74,500s
 
 ##############################################################################
 # 7. CRUZAMENTO: a formula fechada do planejador AHK vs o simulador
 ##############################################################################
-#    planejador: L >= 2*CD_tank + 4*Lat + 2*Margem - P
-   PRINCIPAL  SR45/Lend40, SR45/UR43, SR45/UR43       plano   88,800s | sim   88,800s viol 0 | minimo   87,299s | folga 1.501ms OK
-   CONFIG     Lend40/UR43, UR43/UR43, UR43/UR43       plano   84,800s | sim   84,800s viol 0 | minimo   83,299s | folga 1.501ms OK
-   TODOS 45s                                          plano   88,800s | sim   88,800s viol 0 | minimo   87,299s | folga 1.501ms OK
-   TANKS 50s  50/40, 50/43, 50/43                     plano   98,800s | sim   98,800s viol 0 | minimo   97,299s | folga 1.501ms OK
-   LENDARIOS  40/40, 40/43, 40/45                     plano   78,800s | sim   78,800s viol 0 | minimo   77,299s | folga 1.501ms OK
-   MISTURADO  45/40, 43/45, 43/50                     plano   88,800s | sim   88,800s viol 0 | minimo   87,299s | folga 1.501ms OK
+#    planejador: menor L com soma(janelas) = L, janelas derivadas de L
+#    Janela_k = lure_k + P + secFora_k ; F_i = 2*(CD_i + Lat + Marg) - L
+   PRINCIPAL  SR45/Lend40, SR45/UR43, SR45/UR43       plano   75,429s | janelas 75.429ms | sim   75,429s viol 0 | minimo   75,428s | dif     0ms OK
+   CONFIG     Lend40/UR43, UR43/UR43, UR43/UR43       plano   73,714s | janelas 73.714ms | sim   73,714s viol 0 | minimo   73,714s | dif     0ms OK
+   TODOS 45s                                          plano   78,000s | janelas 78.000ms | sim   78,000s viol 0 | minimo   78,000s | dif     0ms OK
+   TANKS 50s  50/40, 50/43, 50/43                     plano   80,133s | janelas 80.133ms | sim   80,133s viol 0 | minimo   80,133s | dif     0ms OK
+   LENDARIOS  40/40, 40/43, 40/45                     plano   71,714s | janelas 71.714ms | sim   71,714s viol 0 | minimo   71,714s | dif     0ms OK
+   MISTURADO  45/40, 43/45, 43/50                     plano   76,857s | janelas 76.857ms | sim   76,857s viol 0 | minimo   76,857s | dif     0ms OK
 
 
 ##############################################################################
-# 8. ATRASOS E ANTECIPACOES (compensacao dinamica)
+# 8. TESTE DA PREMISSA: o lure ANTES do proximo cast recupera o CD
 ##############################################################################
-   referencia: L minimo = 83,299s
-   sem atraso   -> volta  83,299s | violacoes 0 | maior CD no cast 250ms
-   combo +5s    -> volta  83,299s | violacoes 0 | maior CD no cast 0ms
-   combo +15s   -> volta  83,299s | violacoes 0 | maior CD no cast 0ms
-   combo +30s   -> volta  98,100s | violacoes 0 | maior CD no cast 0ms
-   troca +5s    -> volta  98,299s | violacoes 0 | maior CD no cast 0ms
-   troca +30s   -> volta 173,299s | violacoes 0 | maior CD no cast 0ms
-   ambos +30s   -> volta 173,299s | violacoes 0 | maior CD no cast 0ms
+#    Se so o trecho pos-cast contasse, F seria sempre P e a volta nunca
+#    fecharia abaixo de 2*CD. Este bloco mede os dois trechos.
+   tank CD 45000, L = 75.429ms
+   lure antes do cast      = 27.224ms
+   pos-cast (P)           = 2.700ms
+   F total entre casts    = 29.924ms  (lure + P)
+   exigido 2*(CD+m)-L     = 15.571ms
+   o lure e necessario?    = SIM, sem ele F seria 2700ms e ficaria 12871ms curto
+   recuperacao = (F-Lat) + (L-F)*0,5 = 52.426ms  ; exigido CD+Marg = 45.250ms
+   200 voltas: casts estaveis 1170 | com CD pendente 0
+   -> o lure ANTES do cast recupera o CD iniciado no cast anterior.
+      Se a formula ignorasse o lure, F seria so P = 2700ms e faltariam
+      12871ms de recuperacao neste cenario.
+
+##############################################################################
+# 9. ATRASOS E ANTECIPACOES (compensacao dinamica)
+##############################################################################
+   referencia: L minimo = 73,714s
+   sem atraso   -> volta  73,715s | violacoes 0 | maior CD no cast 0ms
+   combo +5s    -> volta  88,715s | violacoes 0 | maior CD no cast 0ms
+   combo +15s   -> volta 118,715s | violacoes 0 | maior CD no cast 0ms
+   combo +30s   -> volta 163,715s | violacoes 0 | maior CD no cast 0ms
+   troca +5s    -> volta  88,715s | violacoes 0 | maior CD no cast 0ms
+   troca +30s   -> volta 163,715s | violacoes 0 | maior CD no cast 0ms
+   ambos +30s   -> volta 253,715s | violacoes 0 | maior CD no cast 0ms
    (um atraso e absorvido pela folga; se passar da folga, o macro precisa
     aceitar uma volta mais longa em vez de forÃ§ar o cast.)
 

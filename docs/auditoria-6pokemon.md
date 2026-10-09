@@ -1,245 +1,219 @@
 # Auditoria matemática e de confiabilidade — Hoenn 2-2-2
 
-Data: 2026-10-09. Auditoria do otimizador de cooldown dos seis Pokémon.
+Datas: 2026-10-09 (primeira auditoria e correção de dois erros graves) e
+2026-10-09 (segunda rodada: correção da premissa de recuperação).
 
-## A. Diagnóstico
+## A — Diagnóstico
 
-### A.1 Erro grave: dois Pokémon fora da Ball ao mesmo tempo
+### A.1 Erro 1 (primeira rodada, preservado): dois Pokémon fora da Ball
 
 `Hoenn222CdRegistrarChamada()` colocava **só** o secundário a 1,0× na chamada
-do p2. O tank permanecia a 1,0× até a próxima troca de time.
+do p2. O tank permanecia a 1,0× até a próxima troca.
 
-Isso viola a regra de "apenas um Pokémon fora da Ball por vez" e **infla a
-capacidade da volta de 3,5× para 4,0×**. Todo o plano era calculado sobre essa
-capacidade errada.
+Isso viola "apenas um Pokémon fora da Ball por vez" e inflava a capacidade da
+volta de 3,5× para 4,0×.
 
-**Correção:** a chamada do p2 agora também leva o tank de volta para a Ball.
+**Correção:** a chamada do p2 também leva o tank de volta para a Ball.
 
-### A.2 Erro grave: o planejador tratava a dupla como um único Pokémon
+### A.2 Erro 2 (primeira rodada, preservado): dupla tratada como um Pokémon só
 
-A fórmula anterior era:
+`L = ΣX/2` não tem base física, a janela inteira era dada ao tank e
+`0,5·Summon` era somado como ganho quando o secundário está na Ball nesse
+trecho (é perda). O plano de 67,462 s produzia casts com 8,2 s de CD pendente.
+
+### A.3 Erro 3 (segunda rodada): o lure antes do cast não contava
+
+A primeira auditoria afirmou:
+
+> O tempo de lure antes do cast não recupera o cooldown do Tank, porque o
+> cooldown só começa depois da skill.
+
+**Isso está errado.** O cooldown nasce no cast da volta **anterior** e
+precisa zerar antes do próximo. O lure acontece no meio desse intervalo e
+recupera esse mesmo cooldown. Cada segundo conta onde acontecer.
+
+O efeito era grande: o planejador da primeira rodada dava **88,8 s** para a
+composição principal, quando o mínimo real é **75,4 s** — 13,4 s de volta
+desperdiçada por conta de uma premissa errada.
+
+### A.4 Por que o tempo de lure não é "de graça"
+
+Não existe tempo fora "de graça": só um Pokémon está fora da Ball por vez. A
+janela de uma dupla é
 
 ```
-X_k = max(cdTank + Λ + Δ, cdSec + 0,5·p + 0,5·Summon + Λ + Δ)
-L   = ΣX / 2
-janela_k = 2·X_k − L
+janela_k = lure_k + P + F_sec_k
 ```
 
-Três defeitos, todos confirmados pelo simulador independente:
-
-1. **`L = ΣX/2` não tem base física.** Não existe identidade que faça a volta
-   ser metade da soma dos "X". A volta é a soma das janelas, e as janelas têm
-   de comportar o combo inteiro mais a recuperação.
-2. **Dava a janela inteira ao tank.** O tank só recupera a 1,0× no trecho
-   pós-cast; o tempo de lure antes do cast não conta, porque o cooldown só
-   começa a correr **depois** da skill.
-3. **Somava `0,5·Summon` como se fosse ganho.** O secundário está na Ball
-   durante o Summon — esse tempo é perda de 0,5×, não acréscimo.
-
-**Consequência medida:** o plano antigo de 67,462 s produzia casts com até
-**8,2 s de CD ainda pendente**, em 6 de 18 casts da primeira volta.
-
-### A.3 Margem contada duas vezes
-
-`Hoenn222_CdByTier` e a margem de 250 ms apareciam tanto na restrição do tank
-quanto na do secundário, dentro da mesma fórmula. Com a estrutura corrigida
-cada restrição usa a margem uma vez.
-
-### A.4 Ineficiência real, não corrigida (e não deve ser)
-
-O **lure** — tempo do tank em campo antes do cast — não recupera o CD do
-próprio tank. Só serve ao CD do Pokémon da dupla *anterior*, que já está em
-cooldown. Consequência: **o lure é tempo morto do ponto de vista do tank que
-vai usar a skill.** É por isso que o piso real fica acima do piso teórico de
-3,5×.
+O lure dá tempo fora ao **tank**; o trecho depois do p2 dá tempo fora ao
+**secundário**. Dar mais lure ajuda o tank e *tira* tempo do secundário. É por
+isso que a distribuição não é livre: no mínimo, cada janela é exatamente o
+que o tank e o secundário daquele par exigem, e as três somam exatamente L.
 
 ---
 
-## B. Fórmula final
+## B — Fórmula final
 
-Só um Pokémon fora da Ball por vez. Dentro da janela da dupla `k`:
-
-| Trecho | Duração | Quem está fora | Taxa |
-| --- | --- | --- | --- |
-| troca → lure | `lure` | tank `k` | 1,0 |
-| lure → cast do tank | `lure` | tank `k` | 1,0 (CD ainda não começou) |
-| `T0+Λ` → `T0+P` | `P − Λ` | tank `k` | 1,0 |
-| `T0+P` → troca | resto | secundário `k` | 1,0 |
-
-### Restrição do tank — é a que limita
+Recuperação contada **entre dois casts consecutivos** do mesmo Pokémon. Com
+F = tempo total fora da Ball nesse intervalo, Λ = latência, Δ = margem:
 
 ```
-(P − Λ)·1,0 + (L − P)·0,5  >=  CD + Λ + Δ
-L  >=  2·CD + 4·Λ + 2·Δ − P
+(F − Λ)·1,0 + (L − F)·0,5   >=   CD + Δ
+F  >=  2·(CD + Λ + Δ) − L
 ```
 
-Com CD 45 s, Λ = Δ = 250 ms e P = 2700 ms: **L ≥ 88,8 s**.
+O `(F − Λ)` existe porque o congelamento de latência fica **dentro** do
+primeiro trecho fora da Ball. Λ e Δ entram uma vez cada.
 
-### Restrição do secundário
+Quem pode ficar fora, e quanto:
 
-Ele fica fora da Ball de `T0+P` até a próxima troca, ou seja `(w − P)` da
-janela `w`:
+| | tempo fora disponível | mínimo técnico |
+|---|---|---|
+| Tank `k` | `lure_k + P` (da troca até a chamada do p2) | `P` |
+| Secundário `k` | `janela_k − lure_k − P` | `Gap + Post` |
 
-```
-(w − P)·1,0 + (L − w + P)·0,5  >=  CD + Δ
-w  >=  2·(CD + Δ) − L + P
-```
+E as três janelas fecham em `L = janela₁ + janela₂ + janela₃`.
 
-E a janela ainda precisa comportar o combo: `w ≥ P + Gap + Post = 6500 ms`.
-
-### Janelas
-
-O menor `L` que satisfaz as duas restrições. A sobra sobre o mínimo é lure,
-que fica disponível para o jogador. Quando a soma dos mínimos dos
-secundários exige mais que o piso do tank, é ela que define `L`.
+O menor `L` que fecha essa soma é a volta mínima sustentável. A soma das
+janelas é decrescente em `L` (CD maior exige menos tempo fora), então a busca
+é por bisseção na condição `soma(janelas) ≤ L`.
 
 **Verificado:** `tests/simular-6pokemon.ps1` seção 7 cruza a fórmula fechada
-com uma busca binária sobre o simulador de eventos. As duas concordam, com o
-plano 1,5 ms mais folgado que o mínimo absoluto.
+com o simulador de eventos por busca binária. As duas concordam com diferença
+0 ms nas seis composições.
 
 ---
 
-## C. Comparação
-
-Composição CONFIG (a que o `config.ahk` usava antes da auditoria):
+## C — Comparação: composição principal (SR/Lendário, SR/UR, SR/UR)
 
 | Métrica | Valor |
-| --- | --- |
-| Soma dos seis CDs | 255,0 s |
-| Piso teórico 3,5× | 72,857 s |
-| Piso teórico 3,5× + 500 ms | 73,714 s |
-| Plano antigo (errado) | 67,462 s — **inviável** |
-| Macro anterior medido | 86,500 s |
-| **Plano corrigido** | **84,800 s** |
-| Mínimo absoluto (simulador) | 83,299 s |
-
-Composição principal da auditoria (SR/Lendário, SR/UR, SR/UR):
-
-| Métrica | Valor |
-| --- | --- |
+|---|---|
 | Soma dos seis CDs | 261,0 s |
-| Piso teórico 3,5× | 74,571 s |
-| Piso teórico 3,5× + 500 ms | 75,429 s |
-| **Plano corrigido** | **88,800 s** |
-| Mínimo absoluto (simulador) | 87,299 s |
+| Piso teórico 3,5× sem margem | 74,571 s |
+| Piso teórico 3,5× + 500 ms por Pokémon | 75,429 s |
+| Plano da 1ª auditoria (premissa errada) | 88,800 s |
+| **Plano corrigido** | **75,429 s** |
+| Mínimo absoluto do simulador | 75,428 s |
 
-**A composição principal é mais lenta que o macro anterior de 86,5 s.** Não é
-regressão: os tanks são SR (45 s) em vez de Lendário/UR. O tier do tank é o
-que manda, e ele está no `config.ahk`.
+O plano corrigido **atinge** o limite idealizado. Ganho contra a primeira
+auditoria: **−15,1 %**. Contra o macro anterior medido (86,500 s, composição
+diferente): **−12,8 %**.
 
-Ganho real sobre o macro anterior, na **mesma** composição: 86,500 → 84,800 s
-(**−2,1 %**). Os 20 % de antes eram artefato da capacidade errada.
+### Outras composições
 
----
+| Composição | Soma CD | Piso 3,5× | Plano |
+|---|---|---|---|
+| Lendário/UR, UR/UR, UR/UR (anterior config) | 255,0 | 72,857 | 73,714 |
+| Todos 45 s | 270,0 | 77,143 | 78,000 |
+| Tanks 50 s / secs 40,43,43 | 276,0 | 78,857 | 80,133 |
+| Lendários 40/40, 40/43, 40/45 | 248,0 | 70,857 | 71,714 |
+| Misto 45/40, 43/45, 43/50 | 266,0 | 76,000 | 76,857 |
 
-## D. Distribuição dos seis Pokémon
-
-Composição CONFIG, L = 84,8 s, janela = 28,27 s por dupla:
-
-| Dupla | Tank (CD) | Secundário (CD) | Tank fora | Sec fora | Lure |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Lendário 40 s | UR 43 s | 25,57 s | 25,07 s | 0 |
-| 2 | UR 43 s | UR 43 s | 25,57 s | 25,07 s | 0 |
-| 3 | UR 43 s | UR 43 s | 25,57 s | 25,07 s | 0 |
-
-O tank não está fora da Ball o tempo todo: são 2700 ms de recuperação real
-(2450 ms úteis, descontada a latência) mais o lure. **A soma das janelas é
-exatamente L.** Nenhum segundo é contado para dois Pokémon.
+Em todas, o plano fica entre o piso sem margem e o piso com 500 ms de margem.
 
 ---
 
-## E. Tempos obrigatórios e otimizáveis
+## D — Distribuição dos seis Pokémon
 
-| Sleep | Valor | Obrigatório? | Efeito na volta |
-| --- | --- | --- | --- |
-| `SleepAfterTankCombo` | 2700 ms | Sim (animação do jogo) | **Alavanca maior.** Cada +1000 ms aqui encurta a volta em 1000 ms |
-| `SleepAfterSwitch` | 800 ms | Sim (chamada → cast) | Incluído em `P + Gap` |
-| `SleepAfterCombo` | 3000 ms | Sim (pós-combo) | Incluído em `P + Gap + Post` |
-| Pausas de 50 ms em `ComboSimples()` | 4×50 ms | Provavelmente sim | Marginal |
+Composição principal, L = 75,429 s:
 
-**Oportunidade real:** aumentar o tempo do tank fora da Ball depois do cast
-encurta a volta na mesma medida. Em 12 s de pós-cast a volta cai para 76,4 s.
-Isso é uma decisão de jogo (o tank precisa continuar em campo), não uma
-otimização de software — por isso o valor continua 2700 ms.
+| Dupla | Tank | Secundário | Janela | Lure | Tank fora | Sec fora |
+|---|---|---|---:|---:|---:|---:|
+| 1 | SR 45 s | Lendário 40 s | 21,143 | 12,871 | 15,571 | 5,571 |
+| 2 | SR 45 s | UR 43 s | 27,143 | 12,871 | 15,571 | 11,571 |
+| 3 | SR 45 s | UR 43 s | 27,143 | 12,871 | 15,571 | 11,571 |
 
-Não há espera artificial. O alvo de COMBAR sem CD é a margem (250 ms).
+Soma das janelas = 75,429 ms = L. Soma dos seis tempos fora = 75,429 ms.
+**Nenhum segundo é contado para dois Pokémon, e nenhum tempo fora ultrapassa a
+volta.**
+
+Linha do tempo de uma dupla `k` (instantes relativos):
+
+```
+s_k        tank k SAI da Ball, secundário continua dentro (0,5)
+  ...      tank recupera a 1,0 — este é o CD que nasceu em T0 da volta anterior
+T0_k       cast do tank; CD novo passa a contar em T0_k + Λ
+T0_k+P     chamada do p2: tank VOLTA para a Ball, secundário SAI (1,0)
+T0_k+P+G   cast do secundário; CD conta a partir de +Λ
+  ...      secundário recupera a 1,0
+s_(k+1)    troca: secundário volta para dentro
+```
 
 ---
 
-## F. Compensação dinâmica
+## E — Tempos obrigatórios e otimizáveis
+
+| Sleep | Valor | Obrigatório | Efeito |
+|---|---:|---|---|
+| `SleepAfterTankCombo` | 2700 ms | Sim (animação) | Entra em `F_tank`. Cada +1 s encurta a volta em até 1 s |
+| `SleepAfterSwitch` | 800 ms | Sim | Entra no mínimo do secundário |
+| `SleepAfterCombo` | 3000 ms | Sim | Entra no mínimo do secundário |
+
+Os três já estão dentro da linha do tempo: não são somados ao piso, ele é
+calculado com eles. Não há espera artificial: o alvo de COMBAR sem CD é só a
+margem.
+
+---
+
+## F — Compensação dinâmica
 
 O acumulador é preguiçoso: cada leitura aplica a recuperação decorrida com a
-taxa vigente do slot. Eventos que mudam a taxa:
+taxa vigente do slot. O atraso do jogador **não é descontado** da próxima
+espera; o alvo é recalculado dos seis CDs reais.
 
-| Evento | Efeito |
-| --- | --- |
-| Cast do tank | CD = CD principal, contagem em `T+Λ`, taxa 1,0 |
-| Chamada do p2 | tank → 0,5, secundário → 1,0 |
-| Cast do secundário | CD = CD principal, contagem em `T+Λ` |
-| Troca de time | dupla anterior → 0,5, tank novo → 1,0 |
-| F8 | seis CDs a zero, todos na Ball |
+Verificado no simulador (composição CONFIG, L = 73,714 s):
 
-Atraso não é descontado da próxima espera. O macro recalcula o alvo a partir
-dos seis CDs reais a cada leitura. Verificado no simulador:
+| Atraso | Volta | Casts com CD pendente |
+|---|---:|---:|
+| nenhum | 73,715 s | 0 |
+| combo +5 s | 88,715 s | 0 |
+| combo +30 s | 163,715 s | 0 |
+| troca +30 s | 163,715 s | 0 |
+| ambos +30 s | 253,715 s | 0 |
 
-| Atraso | Volta resultante | Casts com CD pendente |
-| --- | --- | --- |
-| nenhum | 83,3 s | 0 |
-| combo +5 s | 83,3 s | 0 |
-| combo +15 s | 83,3 s | 0 |
-| combo +30 s | 98,1 s | 0 |
-| troca +5 s | 98,3 s | 0 |
-| ambos +30 s | 173,3 s | 0 |
-
-Atraso pequeno é absorvido pela folga; atraso maior alonga a volta. **Nunca
-força cast com CD pendente.**
+Atraso alonga a volta; nunca força cast com CD pendente.
 
 ---
 
-## G. Testes
+## G — Testes
 
 | Verificação | Resultado |
-| --- | --- |
-| Suíte isolada (`hoenn-switch-tests.ahk`) | 27 grupos, todas as asserções |
-| Suíte com falha de logger | 28 grupos |
+|---|---|
+| Suíte isolada | 28 grupos |
+| Suíte com falha de logger | 29 grupos |
 | Boot real do `main.ahk` | exit 0, stderr vazio |
-| Simulador: 6 composições × 20 voltas | 0 violações, maior CD no cast 250 ms |
-| Simulador: 200 voltas (estabilidade) | 5 primeiras = 5 últimas |
+| Simulador: 6 composições × 20 e 200 voltas | 0 violações |
 | Propriedade: 40 composições aleatórias | 0 violações no L mínimo |
-| Cruzamento fórmula × simulador | 6/6 concordam, folga 1,5 ms |
+| Cruzamento fórmula × simulador | 6/6 com diferença 0 ms |
+| Teste da premissa (grupo L) | passa; falha se o lure for ignorado |
 
-**Expectativas de teste corrigidas** (nunca afrouxadas, sempre com o motivo):
+Sensibilidade:
 
-1. *Tier→CD* fixava `40000`/`43000`/`45000` em números literais. Passou a
-   derivar do `Hoenn222_CdByTier`, para não quebrar quando o tier muda.
-2. *Cumulador* assumia que `Acao_Gatilhos` (troca de time) disparava combo. É
-   uma troca: a dupla vai para a Ball, e a conta é 1,0 até a troca e 0,5
-   depois.
-3. *Grupo A* assumia verde em `cdSec − 1900`. O alvo encolhe conforme o CD
-   recupera, então o verde chega antes: `2·decorrido ≥ cdSec + Λ − tolerância`.
-4. *Grupo F* validava `Σ(janelas) = L`, que só valia para a fórmula antiga.
-   Passou a validar o piso do tank e que `L` vem do tank mais lento.
-5. *Grupo K* fixava `40000`; agora deriva do config.
+| Margem | L | Latência | L |
+|---:|---:|---:|---:|
+| 0 ms | 73,286 s | 0 ms | 73,286 s |
+| 250 ms | 73,714 s | 250 ms | 73,714 s |
+| 500 ms | 74,143 s | 500 ms | 74,143 s |
+| 1000 ms | 75,000 s | 1000 ms | 75,000 s |
 
-**Testes novos:** tier desconhecido cai no padrão; tank volta para a Ball na
-chamada do p2; nunca mais de um Pokémon fora da Ball; piso do tank; o plano
-aumenta quando o tank fica mais lento.
+Latência e margem pesam o mesmo, como esperado: entram somadas em `2·(CD+Λ+Δ)`.
+
+**Correção de runtime:** este build do AutoHotkey não aceita literal de objeto
+multi-linha. O plano usa literal de uma linha.
 
 ---
 
-## H. Pendências para o primeiro teste prático
+## H — Pendências para o primeiro teste prático
 
-Nada abaixo foi validado dentro do jogo. É simulação.
+Nada foi medido dentro do jogo. É simulação.
 
-1. **A tabela 40/43/45/50 s.** Os números vêm da auditoria, não de medição.
-   Um erro de 2 s no CD do tank move a volta em 4 s.
-2. **As taxas 1,0 / 0,5.** Assumidas exatas. Se a de dentro da Ball for 0,6, a
-   volta encurta.
-3. **A latência de 250 ms.** Medir entre o `ControlSend` e o início real do
-   cooldown. Valores medidos antes: 750 ms real → cast 250 ms adiantado.
-4. **Se a animação de 2700 ms é redutível.** É a alavanca maior que existe.
-5. **Aurrela e quantos segundos de "lure" o respawn permite.** O lure não
-   ajuda o tank que vai usar a skill, então só interessa como folga.
-6. **Comportamento na troca de time com F8 ou interrupção.**
+1. **A tabela 40/43/45/50 s.** Vem da especificação, não de medição. Um erro
+   de 2 s no CD de um tank move a volta em cerca de 4 s.
+2. **As taxas 1,0 / 0,5.** Assumidas exatas.
+3. **A latência de 250 ms.** Se for maior, a volta alonga na mesma medida.
+4. **Se a animação de 2700 ms é redutível.** Entra direto em `F_tank`.
+5. **O lure real do respawn.** O plano assume `lure = F_tank − P`. Se o
+   respawn não der esse tempo, a volta precisa crescer.
+6. **Comportamento em F8, interrupção e falha de envio.**
 
 Nenhum número deste documento representa resultado medido no jogo.
