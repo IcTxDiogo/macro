@@ -85,6 +85,99 @@ pedido: ela consome e executa. Fora dela, o comportamento é o da primeira
 pressão. `Hoenn222_EmergencyWindowMs := 0` desliga a emergência e mantém só o
 pedido antecipado.
 
+### Gatilho de troca de time (LT/RT e XButton2)
+
+A mesma regra vale para o outro movimento do ciclo, a troca para o próximo time.
+`Acao_Gatilhos()` chama `SolicitarTrocaHoenn222()`; o verde é o do estado
+`TROCAR TIME`, lido do mesmo `GetHoenn222PendingMs()`.
+
+| Fase | Pressão | Resultado |
+| --- | --- | --- |
+| `TROCAR TIME` verde | 1ª | troca na hora |
+| `TROCAR TIME` amarelo | 1ª | `TROCA ARMADA`; troca sozinha no instante do verde |
+| `COMBAR` (combo ainda não feito) | 1ª | armada; só sai depois do combo desta dupla e do verde da troca |
+| qualquer fase | 2ª dentro de `Hoenn222_EmergencyWindowMs` | emergência: troca na hora e consome o pedido |
+| `Aguardando sincronização` | 1ª | troca na hora |
+
+O pedido de troca é independente do pedido de combo (os dois podem estar
+armados), fica preso ao time em que foi feito e é cancelado por F8, troca de modo
+e mudança de time. Diagnóstico: `SWITCH_REQUEST`, `SWITCH_ARMED`, `SWITCH_FIRED`,
+`SWITCH_DISARMED`, `SWITCH_RESULT`.
+
+O cálculo do verde nunca prende a troca: se ele lançar exceção, vale o
+comportamento antigo (troca na hora) e o erro vai para `phase=switch_readiness`.
+
+O alvo de `TROCAR TIME` é `janela − lure` do plano, medido a partir do cast. A
+janela do plano começa na troca de time e o lure acontece antes do cast; usar a
+janela inteira contava o lure duas vezes.
+### Primeira volta: o ritmo do plano vale desde o primeiro ciclo
+
+Ao ligar o macro ou depois do F8, os seis Pokémon estão com o CD pronto. Só pelo
+cooldown nada obrigaria a esperar: a troca para o time 2 liberava o combo na hora
+(CD zero) e a espera inteira caía de uma vez na volta do time 1. Por isso, enquanto
+um time ainda não fez o primeiro cast do tank depois do F8
+(`Hoenn222_TeamCasted`), o verde do `COMBAR` só acende depois do `lure` planejado,
+contado da troca de time. Depois do primeiro cast quem manda é só o cooldown real.
+
+Simulação com as funções de produção (SR/Lendário, SR/UR, SR/UR): combos em
+0,0 s, 21,2 s e 48,3 s; trocas em 8,3 s, 35,4 s e 62,6 s; o time 1 volta a
+combar em 75,5 s, que é o `L` do plano, e todas as voltas seguintes duram o mesmo.
+### Margem do secundário e latência da chamada
+
+O jogo só conta o CD `LatencyMs` depois de o Pokémon sair da Ball, e o acumulador
+aplica esse congelamento na chamada do p2. A tolerância do secundário e o plano
+não o contavam, então num ciclo perfeito o secundário era usado ~10 ms depois do
+CD zerar, não 250 ms. Agora a tolerância é
+`0,5 × SleepAfterTankCombo + (SleepAfterSwitch − Latency) − Margin` e o secundário
+entra no plano com `2·Latency + Margin` (o tank continua com `Latency + Margin`).
+Teste Z: num ciclo perfeito, todo cast de tank e de secundário ocorre depois de
+CD zerado + margem. Custo: a volta do plano sobe cerca de 0,2 s.
+### Tempo fora mínimo (conforto): `Hoenn222_MinLureMs` e `Hoenn222_MinSecondaryOutMs`
+
+A volta mínima usa só o cooldown, sem folga para o jogador. Dois pisos por dupla no
+`config.ahk` dão esse tempo: o tank fica fora ao menos `MinLureMs` antes do combo
+(da troca ao cast) e o secundário ao menos `MinSecondaryOutMs` (da chamada à troca).
+O macro nunca libera o combo antes do piso e o planejador acha a menor volta que
+cabe, já tirando do secundário o que o cooldown dele permite. Regra de bolso:
+cada +1 s de volta libera ~7 s de tempo fora para dividir entre os seis Pokémon.
+
+Com SR/Lendário, SR/UR, SR/UR e margem 400 ms (simulação de jogador perfeito):
+
+| Pisos | Volta | Lure tank | Secundário fora |
+| --- | --- | --- | --- |
+| nenhum | 75,9 s | 12,7 s | 5,9 / 11,9 / 11,9 s |
+| lure 15 s | 77,6 s | 15,0 s | 4,2 / 10,2 / 10,2 s |
+| lure 15 s + Hyperior 8 s (padrão) | 78,9 s | 15,0 s | 8,0 / 8,9 / 8,9 s |
+| lure 15 s + Hyperior 8 s + sec 2/3 em 12 s | 85,1 s | 15,0 s | 8,0 / 12,0 / 12,0 s |
+### Congelamento do movimento durante a ação armada (corrigido)
+
+O laço de 30 ms (`GameLoop`) também envia o movimento. Quando a ação armada
+disparava a partir dele, o combo (~6,5 s) ou a troca (~1 s) subia **por cima** da
+thread do laço; o AutoHotkey não reinicia um timer enquanto a instância antiga
+existe, então movimento, botões e quadrado paravam até a ação terminar.
+Agendar com `SetTimer(..., -1)` não bastava: com chamadas lentas no laço
+(`ControlSend`, `WinExist`, `ToolTip`) o timer ainda interrompia o laço.
+
+Correção: `Thread("NoTimers")` no início do `GameLoop` (nenhum timer sobe por
+cima dele; as ações começam quando a volta termina), disparo automático em thread
+descartável (`DispararComboArmadoHoenn222`, `DispararTrocaArmadaHoenn222`) e
+atalhos do mouse agendados como o controle. Regra: **nunca** usar `Critical`,
+`Sleep` ou ação longa direto no `GameLoop`.
+
+Teste permanente: `tests/run-live-stall-test.ps1` (timers e `Sleep` reais).
+Antes da correção: laço parado 6828 ms no combo e 953 ms na troca; depois: 62 ms e
+94 ms. O log registra `LOOP_STALL` se o laço ficar parado mais de 400 ms.
+### Latência de saída da Ball também para o tank (troca de time)
+
+O acumulador aplicava a latência de saída da Ball ao secundário (chamada do p2), mas
+creditava o tank novo com recuperação 1,0 desde a tecla da troca. Os casts de tank
+saíam ~250 ms otimistas (teste em jogo de 09/10: tanks usados 412–420 ms depois do CD
+estimado zerar, contra 640–4300 ms antes, quando a demora do jogador e o travamento
+escondiam a folga). Agora os seis perdem a latência duas vezes por intervalo entre
+casts (saída da Ball e início do CD novo): `Hoenn222CdTrocaTime` congela o tank novo
+por `LatencyMs`, o planejador usa `2·Latency + Margin` para todos e
+`Hoenn222CdReadyInMs` soma o congelamento ainda por vir. Num ciclo perfeito todo cast
+cai a `Margin` + 0–5 ms depois do CD zerado. Custo: a volta do plano sobe 0,2 s.
 ## 3. Garantias
 
 - **Um pedido por vez.** `ComboComplexoHoenn222()` consome o pedido armado
@@ -131,8 +224,19 @@ Tudo em `A_Temp\macro_switch_debug.log`:
 O logger de sessão passou a registrar a origem do combo:
 `COMBO START | Modo: 2-2-2 | Time: 1 | Origem: manual | antecipado | emergencia`.
 
-Indicador visual: verde = `<= 0` ms restantes, azul = até 10 s em `COMBAR`,
-amarelo = demais, inalterado. O tooltip deixou de mostrar `Ref: <tier>` fixo e
+Indicador visual — o quadrado e o botão leem o mesmo pendente, então a cor diz\nexatamente o que o botão vai fazer:
+
+| Cor | Significado |
+| --- | --- |
+| Verde | apertar executa na hora (inclui `Aguardando sincronização`) |
+| Azul | `COMBAR` com até 10 s para o verde |
+| Violeta | há pedido armado; executa sozinho ao ficar verde |
+| Amarelo | demais casos de espera |
+
+O alvo de `COMBAR` do otimizador é *quanto falta a partir de agora*; ele chega ao
+contador somado ao decorrido, de modo que o pendente é exatamente o que falta
+(antes o decorrido era descontado duas vezes e o verde acendia na metade do tempo).
+A margem de segurança conta a partir do instante em que o CD zerou. O tooltip deixou de mostrar `Ref: <tier>` fixo e
 passa a mostrar `Tank:` e `Sec:` lidos do `config.ahk`.
 
 ## 5. O que não mudou

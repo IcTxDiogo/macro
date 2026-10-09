@@ -70,11 +70,9 @@ Acao_Gatilhos(source := "direct") {
                 Potion()
             }
         } else if (ModoAtual == "Hoenn222") {
-            if (TrocarTimeHoenn(3)) {
-                Sleep(SleepAfterSwitch)
-                ControlSend("{" KeyPokestop "}", , GameWindow)
-                Potion()
-            }
+            ; Troca na hora se TROCAR TIME ja esta verde; senao arma e troca
+            ; sozinha no verde. Duplo acionamento troca na hora.
+            SolicitarTrocaHoenn222(source)
         }
     } catch as e {
         SwitchDebug("SWITCH_ERROR", "phase=trigger_action source=" source, e)
@@ -117,8 +115,10 @@ Acao_RightThumb() {
 
 ; --- HOTKEYS PARA TECLADO E MOUSE ---
 #HotIf WinActive(GameWindow)
-XButton1:: Acao_Bumpers()  ; Botão lateral 1 do mouse: Combo (depende do modo)
-XButton2:: Acao_Gatilhos("mouse") ; Botão lateral 2 do mouse: Revive/Troca Time (depende do modo)
+; Agendados como no controle: a acao (que pode dormir centenas de ms) roda numa
+; thread propria e nunca prende a thread do movimento por baixo dela.
+XButton1:: SetTimer(() => Acao_Bumpers(), -1)  ; Botão lateral 1 do mouse: Combo (depende do modo)
+XButton2:: SetTimer(() => Acao_Gatilhos("mouse"), -1) ; Botão lateral 2 do mouse: Revive/Troca Time (depende do modo)
 #HotIf
 
 ; Carrega o motor do controle

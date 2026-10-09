@@ -6,9 +6,24 @@ global StatusText
 ^Esc:: InterruptAndReload()
 SetTimer(GameLoop, 30)
 
+; REGRA: este laco roda a cada 30 ms e e a thread do movimento. Nunca use
+; Critical, Sleep nem execute acoes longas diretamente aqui: agende uma thread
+; descartavel com SetTimer(..., -1). Critical on/off deixa o laco interrompivel e a
+; acao longa sobe por cima dele, congelando movimento e botoes ate acabar.
 GameLoop() {
     static wasd_active := Map("w", false, "a", false, "s", false, "d", false)
     static buttons_pressed := Map()
+    static ultimoTick := 0
+    ; Nenhum timer pode subir POR CIMA desta thread: se uma acao longa (combo,
+    ; troca) a interrompesse, o laco ficaria preso embaixo dela e o AutoHotkey nao
+    ; reinicia o timer enquanto a instancia antiga existe. As acoes agendadas com
+    ; SetTimer(..., -1) comecam logo que esta volta termina.
+    Thread("NoTimers")
+    ; Diagnostico: registra quando o laco ficou parado (movimento congelado).
+    agoraTick := A_TickCount
+    if (ultimoTick > 0 && agoraTick - ultimoTick > 400)
+        SwitchDebug("LOOP_STALL", "gap_ms=" (agoraTick - ultimoTick) " state=" Hoenn222_State " rodizio=" isRodizioAtivo)
+    ultimoTick := agoraTick
     State := XInput_GetState(0)
     if !State {
         AtualizarTooltipsControle(false)
@@ -131,6 +146,11 @@ GameLoop() {
     } catch as e {
         SwitchDebug("SWITCH_ERROR", "phase=combo_armed", e)
     }
+    try {
+        ProcessarTrocaArmadaHoenn222()
+    } catch as e {
+        SwitchDebug("SWITCH_ERROR", "phase=switch_armed", e)
+    }
 
     AtualizarTooltipsControle()
 }
@@ -177,7 +197,7 @@ AtualizarTooltipsControle(connected := true) {
 ; --- FUNÇÕES DO CRONÔMETRO HOENN 2-2-2 ---
 
 GetHoenn222Tooltip() {
-    global TimeAtual, Hoenn222_State, Hoenn222_ComboArmed
+    global TimeAtual, Hoenn222_State, Hoenn222_ComboArmed, Hoenn222_SwitchArmed
 
     str := "HOENN 2-2-2 | TIME " TimeAtual "`n`n"
 
@@ -194,6 +214,9 @@ GetHoenn222Tooltip() {
         str .= "Sec:  " GetHoenn222TierText(TimeAtual, "second") "`n"
     }
 
+    if (Hoenn222_SwitchArmed) {
+        str .= "`nTROCA ARMADA`n"
+    }
     if (Hoenn222_ComboArmed) {
         str .= "`nCOMBO ARMADO`n"
         ; Antecipacao segura: o macro avisa QUEM falta e o quanto o secundario
@@ -204,6 +227,8 @@ GetHoenn222Tooltip() {
                 str .= "secundario CD +" Round(Hoenn222SecondaryPendenteMs(TimeAtual, 0) / 1000, 1) "s`n"
             } else if (bloqueio == "tank") {
                 str .= "tank em CD`n"
+            } else if (bloqueio == "primeira_volta") {
+                str .= "ritmo da 1a volta`n"
             }
         }
     }
@@ -212,24 +237,31 @@ GetHoenn222Tooltip() {
 }
 
 GetHoenn222CentralTooltip(&color := unset) {
-    global Hoenn222_State
+    global Hoenn222_State, Hoenn222_ComboArmed, Hoenn222_SwitchArmed
 
     color := "FFE033"
     ; Espaço largo mantém o tooltip nativo visível sem letras ou números.
     square := Chr(0x3000)
     if (Hoenn222_State == "WAITING_FIRST_COMBO") {
+        ; O primeiro combo executa na hora (GetHoenn222PendingMs devolve 0), então
+        ; o indicador tem de dizer o mesmo: verde = apertar agora executa agora.
+        ; Amarelo aqui mentia: parecia "espere" e o botão executava assim mesmo.
+        color := "33CC66"
         return square
     }
 
     ; O relógio continua interno; a interface mostra somente a cor.
     ; O mesmo cálculo do verde decide o combo antecipado.
-    color := GetHoenn222CentralColor(GetHoenn222PendingMs(), Hoenn222_State)
+    color := GetHoenn222CentralColor(GetHoenn222PendingMs(), Hoenn222_State,
+        Hoenn222_ComboArmed || Hoenn222_SwitchArmed)
     return square
 }
 
-GetHoenn222CentralColor(pendingMs, state) {
+GetHoenn222CentralColor(pendingMs, state, armed := false) {
     if (pendingMs <= 0)
         return "33CC66" ; Verde com cerca de 80% de intensidade.
+    if (armed)
+        return "B266FF" ; Violeta: pedido armado, executa sozinho ao ficar verde.
     if (state == "WAITING_COMBO" && pendingMs <= 10000)
         return "33A3FF" ; Azul nos últimos 10 segundos de espera do tank.
     return "FFE033" ; Amarelo com cerca de 80% de intensidade por padrão.

@@ -70,6 +70,25 @@ global Hoenn222_SwitchTargetMs := Map(1, 9500, 2, 11500, 3, 11500)
 ; Use 0 para desativar a emergencia e deixar apenas o pedido antecipado.
 global Hoenn222_EmergencyWindowMs := 400
 
+; --- HOENN 2-2-2: TEMPO FORA MINIMO (CONFORTO) ---
+; O plano da volta minima usa so o que o cooldown exige, sem folga. Estes pisos
+; dao o tempo que VOCE precisa (chegar ao ponto, puxar, terminar o pack):
+;
+; Hoenn222_MinLureMs ........... por dupla: tempo minimo do TANK fora antes do
+;                                combo, da troca de time ate o cast. O macro nunca
+;                                libera o combo antes disso.
+; Hoenn222_MinSecondaryOutMs ... por dupla: tempo minimo do SECUNDARIO fora, da
+;                                chamada ate a proxima troca.
+;
+; 0 = so o que o cooldown exige. Valor acima do que o cooldown pede aumenta a
+; volta; o planejador recalcula a menor volta que cabe e ja tira do secundario
+; o que o cooldown dele permite. Regra de bolso: cada +1 s de volta libera ~7 s de
+; tempo fora para dividir entre os seis Pokemon.
+; Desligado (0): valores fixos servem para um respawn so. Se um respawn pedir mais
+; tempo, ex.: Map(1, 15000, 2, 15000, 3, 15000) deixa o tank 15 s fora e a volta
+; sobe cerca de 3 s.
+global Hoenn222_MinLureMs := Map(1, 0, 2, 0, 3, 0)
+global Hoenn222_MinSecondaryOutMs := Map(1, 0, 2, 0, 3, 0)
 ; --- HOENN 2-2-2: COOLDOWN INDIVIDUAL DOS 6 POKEMON ---
 ; Cada Pokemon mantem seu proprio acumulador de cooldown restante, atualizado
 ; pelos eventos reais do macro: cast, entrada e saida da Ball e troca de time.
@@ -96,4 +115,7 @@ global Hoenn222_CdDefaultMs := 50000
 global Hoenn222_RateOutOfBall := 1.0
 global Hoenn222_RateInBall := 0.5
 global Hoenn222_LatencyMs := 250
-global Hoenn222_MarginMs := 250
+; 450 ms depois dos testes em jogo de 09/10: com 250 o time 1 nao soltava a skill
+; mesmo com o CD estimado zerado; com 400 ainda pegava 'bem em cima' no Rhyperior.
+; Cada +50 ms de margem soma ~0,1 s a volta.
+global Hoenn222_MarginMs := 450
