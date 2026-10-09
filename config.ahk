@@ -55,8 +55,13 @@ global Hoenn222CenterOffsetY := -60
 ; depende do move, do cleanse e da cadencia do alvo, nao apenas da raridade. Por isso
 ; tiers e tempos sao configurados lado a lado e nenhum valor fica escrito no codigo.
 ; Alterar um tier sem medir o novo tempo apenas troca o rotulo exibido.
-global Hoenn222_TankTier := Map(1, "Lendário", 2, "UR", 3, "UR")
-global Hoenn222_SecondTier := Map(1, "UR", 2, "UR", 3, "UR")
+; Composição principal auditada: tank SR nas três duplas.
+; O CD do tank é o que limita a volta: L >= 2*CD + 2*Latência + Margem - 2700.
+; Com CD 45s isso dá 88,05s de volta mínima sustentável, e não os 68s que a
+; fórmula anterior anunciava. Trocar um tank para UR (43s) derruba o piso para
+; 84,05s; para Lendário (40s), 80,05s. É o tier do tank que manda.
+global Hoenn222_TankTier := Map(1, "SR", 2, "SR", 3, "SR")
+global Hoenn222_SecondTier := Map(1, "Lendário", 2, "UR", 3, "UR")
 global Hoenn222_ComboTargetMs := Map(1, 15000, 2, 16000, 3, 15500)
 global Hoenn222_SwitchTargetMs := Map(1, 9500, 2, 11500, 3, 11500)
 

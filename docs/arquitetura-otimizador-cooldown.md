@@ -40,13 +40,19 @@ duas grandezas são escolhidas por volta, e a terceira dupla fecha o ciclo.
 | --- | --- | --- |
 | Troca de time para a dupla `k` | `s_k` | Tank sai da Ball → **1,0** |
 | Cast do tank | `T0_k` | CD passa a contar em `T0_k + 250` |
-| Chamada do secundário | `T1_k = T0_k + 2700` | Secundário sai da Ball → **1,0** |
+| Chamada do secundário | `T1_k = T0_k + 2700` | **Tank volta para a Ball (0,5)**; secundário sai → **1,0** |
 | Cast do secundário | `T2_k = T0_k + 3500` | CD passa a contar em `T2_k + 250` |
 | Troca para a dupla seguinte | `s_{k+1}` | Ambos voltam para dentro → **0,5** |
 
-O Tank recupera durante **todo** o tempo em que o time está em campo: a
-espera até o combo, os 2700 ms, os 800 ms e a espera pós-combo. O secundário
-recupera a 0,5 desde a troca anterior até a chamada, e a 1,0 entre `T1` e `T2`.
+**Só um Pokémon fica fora da Ball por vez.** Na chamada do p2 o tank sai de
+campo. Sem isso os dois recuperariam a 1,0 ao mesmo tempo e a capacidade da
+volta passaria de 3,5× para 4,0× — foi exatamente esse o erro que inflou o
+planejador para 67 s.
+
+O Tank recupera a 1,0 durante todo o tempo em que está em campo, mas isso
+inclui o lure antes do cast — e lure **não** conta para o CD dele, porque o
+cooldown só começa a correr depois da skill. A recuperação que importa é
+apenas o trecho pós-cast, de `T0+250` até `T0+2700`: **2450 ms**.
 
 Não existe `PrepareMs`. A única restrição física implícita é que o combo não
 pode começar antes de `s_k` — o macro não impõe nada além disso.

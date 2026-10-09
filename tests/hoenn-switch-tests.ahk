@@ -172,26 +172,33 @@ RunTests() {
         Assert(CdRateOf(Hoenn222Slot(2, true)) == 0.5, "B secundario novo continua na Ball")
         Pass("B transicoes de Ball e estatisticas na troca de time")
 
+        ; Todos os valores sao derivados do config: o grupo nao pode quebrar quando o
+        ; tier do time muda, e nao deve validar um numero fixo que nao foi medido.
+        cdT := GetHoenn222CdMainMs(1, false)
+        cdS := GetHoenn222CdMainMs(1, true)
+        Assert(cdT == Hoenn222_CdByTier[Hoenn222_TankTier[1]], "C tank tier " Hoenn222_TankTier[1] " mapeia para " cdT)
+        Assert(cdS == Hoenn222_CdByTier[Hoenn222_SecondTier[1]], "C sec tier " Hoenn222_SecondTier[1] " mapeia para " cdS)
         ResetCase("WAITING_COMBO", 0, 16000)
-        Assert(GetHoenn222CdMainMs(1, false) == 40000, "C tier Lendario = 40s")
-        Assert(GetHoenn222CdMainMs(1, true) == 43000, "C tier UR = 43s")
         Hoenn222CdCast(1, false, MockTick - 4000)
         Hoenn222CdCast(1, true, MockTick - 500)
         Acao_Gatilhos()
         AssertAcceptedSequence()
         MockTick += 60000
         Assert(CdOf(Hoenn222Slot(2, false)) == 0, "C CD chega a zero e trava em zero")
-        ; tank: 40000 - 3750 fora (250 de latencia) - 30000 dentro (60s a 0,5) = 6250
-        ; sec : 43000 -   250 fora                        - 30000 dentro        = 12750
-        Assert(CdOf(Hoenn222Slot(1, false)) == 6250, "C tank fora 1,0 dentro 0,5 -> " CdOf(Hoenn222Slot(1, false)) " rate=" CdRateOf(Hoenn222Slot(1, false)))
-        Assert(CdOf(Hoenn222Slot(1, true)) == 12750, "C secundario -> " CdOf(Hoenn222Slot(1, true)))
+        ; Acao_Gatilhos e uma TROCA DE TIME: a dupla 1 inteira volta para a Ball
+        ; a 0,5x. O tank foi criado a 1,0x (fora) e fica 0,5 ate a troca; o
+        ; secundario entra a 0,5 desde o inicio.
+        ;   tank: (4000 - Lat) a 1,0 + 60000 a 0,5
+        ;   sec : (500  - Lat) a 1,0 + 60000 a 0,5
+        recT := (4000 - Hoenn222_LatencyMs) + 60000 * Hoenn222_RateInBall
+        recS := (500 - Hoenn222_LatencyMs) + 60000 * Hoenn222_RateInBall
+        Assert(CdOf(Hoenn222Slot(1, false)) == cdT - recT, "C tank recupera " recT "ms -> " CdOf(Hoenn222Slot(1, false)))
+        Assert(CdOf(Hoenn222Slot(1, true)) == cdS - recS, "C secundario recupera " recS "ms -> " CdOf(Hoenn222Slot(1, true)))
         ResetCase("WAITING_COMBO", 0, 16000)
         Hoenn222CdCast(1, false, MockTick - 1000)
         MockTick += 5000
-        ; cast em MockTick-1000, contagem so comeca em MockTick-750, leitura em +5000:
-        ; elapsed = 5750 a 1,0 -> 40000 - 5750 = 34250
-        Assert(CdOf(Hoenn222Slot(1, false)) == 34250, "C recuperacao a 1,0 fora da Ball, latencia de 250Somada")
-        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 34500, "C primeiro instante seguro = CD + margem de 250")
+        Assert(CdOf(Hoenn222Slot(1, false)) == cdT - 5750, "C recuperacao a 1,0 fora da Ball, latencia de 250 somada")
+        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == cdT - 5750 + Hoenn222_MarginMs, "C primeiro instante seguro = CD + margem")
         Pass("C acumulador individual, saturacao em zero e primeiro instante seguro")
 
         ResetCase("WAITING_TEAM_SWITCH", 0, 5000)
@@ -369,9 +376,12 @@ RunTests() {
         Assert(GetHoenn222ComboTargetMs(1) == Hoenn222_MarginMs, "A sem CD o alvo e so a margem")
         Assert(GetHoenn222ComboBloqueio(1) == "", "A com tudo pronto ninguem segura o verde")
 
-        ; Tank pronto, secundario com 43s fora da Ball: o verde e do secundario.
+        ; Tank pronto, secundario com CD principal em cooldown: o verde e do
+        ; secundario. O numero vem do config, nao e fixo.
+        cdSecMain := GetHoenn222CdMainMs(1, true)
         Hoenn222CdCast(1, true, MockTick)
-        Assert(GetHoenn222ComboTargetMs(1) == 43000 - 1900, "A alvo = (CD do secundario - 1900) / taxa")
+        Assert(GetHoenn222ComboTargetMs(1) == cdSecMain - 1900, "A alvo = (CD sec - 1900)/taxa -> "
+            GetHoenn222ComboTargetMs(1) " esperado " (cdSecMain - 1900))
         Assert(GetHoenn222ComboBloqueio(1) == "secundario", "A secundario segurando o verde")
         Assert(Hoenn222SecondaryPendenteMs(1, 0) > 0, "A antecipar agora deixaria o secundario atrasado")
         SolicitarComboHoenn222()
@@ -381,9 +391,13 @@ RunTests() {
         Assert(InStr(DebugText(), "bloqueio=secundario"), "A avisa quem esta segurando")
         GameLoop()
         Assert(Scheduled.Length == 0, "A continua esperando")
-        ; O alvo tambem encolhe conforme o CD recupera, entao o verde chega antes
-        ; dos 43s: com taxa 1,0 e tolerancia 1900, pending = 41350 - 2*decorrido.
-        MockTick += 20674
+        ; O alvo tambem encolhe conforme o CD recupera, entao o verde chega ANTES
+        ; de o CD zerar. Com taxa 1,0 e o alvo medido a partir do inicio do
+        ; estado, o verde e o maior dos dois:
+        ;   alvo = cdSec - (decorrido - Lat) - Tolerancia
+        ;   pend = alvo - decorrido <= 0  =>  2*decorrido >= cdSec + Lat - Tol
+        ateVerde := Ceil((cdSecMain + Hoenn222_LatencyMs - Hoenn222_SecondaryToleranceMs) / 2)
+        MockTick += ateVerde - 1
         GameLoop()
         Assert(Scheduled.Length == 0, "A 1ms antes do instante exato ainda nao dispara (pend="
             GetHoenn222PendingMs() ")")
@@ -467,48 +481,84 @@ RunTests() {
         Pass("E resync and mode change cancel the pending combo")
 
         ResetCase("WAITING_COMBO", 0, 0)
-        ; O segundo argumento e booleano: tank = falso, secundario = verdadeiro.
-        Assert(GetHoenn222CdMainMs(1, false) == 40000, "F tank tier maps to 40s")
-        Assert(GetHoenn222CdMainMs(1, true) == 43000, "F second tier maps to 43s")
-        Assert(GetHoenn222CdMainMs(2, false) == 43000 && GetHoenn222CdMainMs(2, true) == 43000, "F team 2 tiers")
-        Assert(GetHoenn222CdMainMs(3, false) == 43000 && GetHoenn222CdMainMs(3, true) == 43000, "F team 3 tiers")
+        ; O mapeamento tier -> CD vem da tabela do config. Cada tier tem de
+        ; devolver o valor declarado, e mudar o rotulo muda so o CD.
+        for time in [1, 2, 3]
+            for papel in [false, true] {
+                tier := papel ? Hoenn222_SecondTier[time] : Hoenn222_TankTier[time]
+                Assert(GetHoenn222CdMainMs(time, papel) == Hoenn222_CdByTier[tier],
+                    "F dupla " time " " (papel ? "secundario" : "tank") " tier " tier " -> " Hoenn222_CdByTier[tier] "ms")
+            }
+        ; Tier desconhecido cai no padrao, com aviso unico.
+        savedTier2 := Hoenn222_TankTier[2]
+        Hoenn222_TankTier[2] := "inexistente"
+        global Hoenn222_CdAvisoFeito := false
+        Assert(GetHoenn222CdMainMs(2, false) == Hoenn222_CdDefaultMs, "F tier desconhecido usa o padrao")
+        Hoenn222_TankTier[2] := savedTier2
         savedTankTier := Hoenn222_TankTier[1]
-        Hoenn222_TankTier[1] := "SR"
-        Assert(GetHoenn222CdMainMs(1, false) == 45000, "F changing only the tier changes only the CD")
+        Hoenn222_TankTier[1] := "Lendário"
+        Assert(GetHoenn222CdMainMs(1, false) == Hoenn222_CdByTier["Lendário"], "F mudar so o rotulo muda so o CD")
         Hoenn222_TankTier[1] := savedTankTier
         Assert(GetHoenn222TierText(9, "tank") == "?", "F unknown team falls back")
         PlanHoenn222()
-        Assert(Hoenn222_PlanCache.L > 0 && Hoenn222_PlanCache.Janelas.Length == 3, "F plan cached with three windows")
-        ; Janelas diferentes so quando os CDs por dupla sao diferentes. Com os
-        ; tiers atuais todas as duplas exigem o mesmo X, entao todas as janelas
-        ; sao iguais e a volta e L = soma(X)/2.
-        somaJanelas := 0
-        for k in [1, 2, 3]
-            somaJanelas += Hoenn222_PlanCache.Janelas[k]
-        Assert(Abs(somaJanelas - Hoenn222_PlanCache.L) < 1, "F a soma das janelas e a volta L")
-        ; Uma janela menor que a fisica minima do proprio combo seria inviavel.
-        minimo := SleepAfterTankCombo + SleepAfterSwitch
-        for k in [1, 2, 3]
-            Assert(Hoenn222_PlanCache.Janelas[k] >= minimo, "F janela da dupla " k " comporta 2700 + 800")
-        ; Sustentabilidade real: cada tank recupera na propria janela a 1,0 e
-        ; nas outras duas a 0,5. Se isso nao cobre o CD, a volta nao se sustenta.
+        Assert(Hoenn222_PlanCache.L > 0 && Hoenn222_PlanCache.Janelas.Length == 3, "F plano em cache com tres janelas")
+        ; --- PISO DO TANK: e o tank que limita, nao o piso global de 3,5x ---
+        ; O tank so recupera a 1,0x durante (SleepAfterTankCombo - Latencia),
+        ; depois que o p2 e chamado ele volta para a Ball a 0,5x. O tempo de
+        ; lure antes do cast NAO conta: o CD ainda nao comecou.
+        ;   (P - Lat)*1,0 + (L - P)*0,5 >= CD + Lat + Margem
+        ;   => L >= 2*CD + 2*Lat + Margem - P
+        pisoTank := 0
         for k in [1, 2, 3] {
-            dentro := Hoenn222_PlanCache.L - Hoenn222_PlanCache.Janelas[k]
-            recupera := Hoenn222_PlanCache.Janelas[k] + dentro * Hoenn222_RateInBall
-            Assert(recupera >= GetHoenn222CdMainMs(k, false), "F tank da dupla " k
-                " recupera " Round(recupera) "ms para um CD de " GetHoenn222CdMainMs(k, false) "ms")
+            cdT := GetHoenn222CdMainMs(k, false)
+            p := 2 * cdT + 4 * Hoenn222_LatencyMs + 2 * Hoenn222_MarginMs - SleepAfterTankCombo
+            if (p > pisoTank)
+                pisoTank := p
         }
+        Assert(Hoenn222_PlanCache.L >= pisoTank, "F L=" Round(Hoenn222_PlanCache.L)
+            " respeita o piso do tank " Round(pisoTank))
+        Assert(Abs(Hoenn222_PlanCache.L - pisoTank) < 1, "F o tank e o gargalo: L = 2*CD+4*Lat+2*Marg-P")
+        ; Recarga efetiva do tank na volta, conferida pela fisica e nao pela
+        ; formula: (P - Lat) a 1,0x e (L - P) a 0,5x. Vale para o tank mais
+        ; lento, que e quem define L.
+        cdMaisLento := 0
+        for k in [1, 2, 3]
+            if (GetHoenn222CdMainMs(k, false) > cdMaisLento)
+                cdMaisLento := GetHoenn222CdMainMs(k, false)
+        recuperaT := (SleepAfterTankCombo - Hoenn222_LatencyMs)
+            + (Hoenn222_PlanCache.L - SleepAfterTankCombo) * Hoenn222_RateInBall
+        Assert(recuperaT >= cdMaisLento + Hoenn222_LatencyMs + Hoenn222_MarginMs,
+            "F tank mais lento recupera " Round(recuperaT) "ms e precisa de "
+                (cdMaisLento + Hoenn222_LatencyMs + Hoenn222_MarginMs))
+        ; E o gargalo: trocar o tank mais lento por um CD menor encurta a volta.
+        Assert(Abs(Hoenn222_PlanCache.L - (2 * cdMaisLento + 4 * Hoenn222_LatencyMs
+            + 2 * Hoenn222_MarginMs - SleepAfterTankCombo)) < 1,
+            "F L vem do tank mais lento (" cdMaisLento "ms)")
+        ; O piso global 3,5x e um limite inferior TEORICO e nao deve ser
+        ; alcancavel: o tank nao tem tempo fora da Ball para divide-lo.
+        somaCd := 0
+        for k in [1, 2, 3]
+            somaCd += GetHoenn222CdMainMs(k, false) + GetHoenn222CdMainMs(k, true)
+        pisoGlobal := somaCd / (1 + 5 * Hoenn222_RateInBall)
+        Assert(Hoenn222_PlanCache.L > pisoGlobal, "F L=" Round(Hoenn222_PlanCache.L)
+            " acima do piso teorico de 3,5x " Round(pisoGlobal))
+        ; Janela minima: precisa comportar o combo inteiro.
+        minimo := SleepAfterTankCombo + SleepAfterSwitch + SleepAfterCombo
+        for k in [1, 2, 3]
+            Assert(Hoenn222_PlanCache.Janelas[k] >= minimo, "F janela da dupla " k " comporta 2700+800+3000")
         ; O plano so depende da configuracao, entao e estavel e fica em cache.
+        L1 := Hoenn222_PlanCache.L
         janela1 := Hoenn222_PlanCache.Janelas[1]
         global Hoenn222_PlanCache := false
         plano2 := PlanHoenn222()
-        Assert(plano2.Janelas[1] == janela1 && plano2.L == Hoenn222_PlanCache.L, "F mesma configuracao, mesmo plano")
-        savedTierTime1 := Hoenn222_TankTier[1]
-        Hoenn222_TankTier[1] := "SR"
+        Assert(plano2.L == L1 && plano2.Janelas[1] == janela1, "F mesma configuracao, mesmo plano")
+        ; Um tank de CD maior tem de aumentar a volta: e o gargalo real.
+        savedTier1 := Hoenn222_TankTier[1]
+        Hoenn222_TankTier[1] := "T1"
         global Hoenn222_PlanCache := false
         plano3 := PlanHoenn222()
-        Assert(plano3.Janelas[1] != janela1, "F tier mais alto da mais janela a dupla 1")
-        Hoenn222_TankTier[1] := savedTierTime1
+        Assert(plano3.L > L1, "F tank mais lento aumenta a volta: " Round(L1) " -> " Round(plano3.L))
+        Hoenn222_TankTier[1] := savedTier1
         global Hoenn222_PlanCache := false
         PlanHoenn222()
         ResetCase("WAITING_COMBO", 0, 1000)
@@ -517,19 +567,21 @@ RunTests() {
         Pass("F tiers, CD and windows all come from config")
 
         ResetCase("WAITING_COMBO", 0, 0)
+        cdT1 := GetHoenn222CdMainMs(1, false)
         Hoenn222CdCast(1, false, MockTick)
         ; O CD so comeca a contar LatencyMs depois do comando; ate la ele vale cheio.
         MockTick += Hoenn222_LatencyMs
-        Assert(CdOf(Hoenn222Slot(1, false)) == 40000, "H cast loads the CD main and keeps rate out of ball")
-        Assert(CdRateOf(Hoenn222Slot(1, false)) == 1.0, "H casting implies out of ball")
-        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 40250, "H ready = CD + margin")
-        Assert(GetHoenn222ComboTargetMs(1) == 40250, "H COMBAR target follows the tank CD, not a constant")
+        Assert(CdOf(Hoenn222Slot(1, false)) == cdT1, "H cast carrega o CD principal e taxa 1,0 fora da Ball")
+        Assert(CdRateOf(Hoenn222Slot(1, false)) == Hoenn222_RateOutOfBall, "H usar a skill implica estar fora da Ball")
+        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == cdT1 + Hoenn222_MarginMs, "H pronto = CD + margem")
+        Assert(GetHoenn222ComboTargetMs(1) == cdT1 + Hoenn222_MarginMs, "H alvo de COMBAR segue o CD do tank")
         Assert(GetHoenn222ComboBloqueio(1) == "tank", "H tank segurando o verde")
         Hoenn222CdSetRate(Hoenn222Slot(1, false), Hoenn222_RateInBall, MockTick)
         ; 20000ms dentro da Ball a 0,5 tiram 10000ms de CD, nao 20000.
         MockTick += 20000
-        Assert(CdOf(Hoenn222Slot(1, false)) == 30000, "H 20000ms a 0,5 tiram 10000ms de CD")
-        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 30000 / Hoenn222_RateInBall + Hoenn222_MarginMs, "H dentro da Ball o mesmo CD custa o dobro")
+        Assert(CdOf(Hoenn222Slot(1, false)) == cdT1 - 10000, "H 20000ms a 0,5 tiram 10000ms de CD")
+        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick)
+            == (cdT1 - 10000) / Hoenn222_RateInBall + Hoenn222_MarginMs, "H dentro da Ball o mesmo CD custa o dobro")
         Pass("H target follows the individual CD and the in-ball rate")
 
 ; --- INTERVALOS INTERNOS: NUNCA ESTENDIDOS ---
@@ -568,7 +620,16 @@ RunTests() {
         ComboComplexoHoenn222()
         Assert(Scheduled.Length == 1 && isRodizioAtivo, "K combo scheduling unchanged")
         Scheduled[1].Call()
-        Assert(CdOf(Hoenn222Slot(1, false)) == 40000, "K tank CD restarted by its own cast")
+        Assert(CdOf(Hoenn222Slot(1, false)) == GetHoenn222CdMainMs(1, false), "K tank CD restarted by its own cast")
+        ; A chamada do p2 leva o tank de volta para a Ball: so um Pokemon fora
+        ; por vez. Sem isso a capacidade da volta viraria 4,0x em vez de 3,5x.
+        Assert(CdRateOf(Hoenn222Slot(1, false)) == Hoenn222_RateInBall, "K tank volta para a Ball quando o p2 e chamado")
+        Assert(CdRateOf(Hoenn222Slot(1, true)) == Hoenn222_RateOutOfBall, "K secundario assume o posto fora da Ball")
+        ; Invariante: nunca dois fora da Ball ao mesmo tempo.
+        fora := 0
+        for i in [1, 2, 3, 4, 5, 6]
+            fora += CdRateOf(i) >= 1.0 ? 1 : 0
+        Assert(fora <= 1, "K no maximo um Pokemon fora da Ball: " fora)
         Assert(InStr(DebugText(), "CD_CAST"), "K cast recorded in the diagnostics")
         Pass("K the combo registers both casts on the right slots")
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")

@@ -397,50 +397,114 @@ GetHoenn222SwitchTargetMs(timeIndex) {
     return PlanHoenn222().Janelas[timeIndex]
 }
 
-; Planejador global das tres duplas. Depende so da configuracao, entao o
-; resultado e estavel e fica em cache; os alvos de cada fase sao rederivados a
-; cada leitura a partir do estado real dos seis Pokemon.
-;   Tank      : X >= cdTank + Latency + Margin            (independe de p)
-;   Secundario: X >= cdSec  + 0,5*p + 0,5*Summon + Latency + Margin
-;   L = soma(X)/2 e janela = 2*X - L
-; p e o offset do cast do tank; como o tank e usado no primeiro instante seguro,
-; p = Margin.
+; =============================================================================
+; PLANEJADOR GLOBAL DAS TRES DUPLAS
+; =============================================================================
+; Depende so da configuracao, entao o resultado e estavel e fica em cache.
+;
+; MODELO. Só um Pokémon fica fora da Ball por vez. Dentro da janela da dupla k:
+;   tank k fora desde a troca ate a chamada do p2
+;   p2 chamado em T0 + SleepAfterTankCombo; daí em diante quem está fora é o
+;   secundário, e o tank volta para a Ball.
+; Só existe um Pokémon fora da Ball, então a recuperação conjunta da volta é
+; 3,5x o tempo (1 a 1,0 + 5 a 0,5), nunca mais.
+;
+; RESTRIÇÃO DO TANK — a que realmente limita. O tempo de lure ANTES do cast não
+; conta para o CD dele: o cooldown só começa a correr depois da skill. O tank
+; só recupera a 1,0x durante o trecho pós-cast, de (T0+Λ) até (T0+P), ou seja
+; (P - Λ) ms. O resto da volta ele está na Ball a 0,5x. Recuperação da volta:
+;     (P - Λ)·1,0 + (L - P)·0,5   >=   CD + Λ + Δ
+; Isolando L:
+;     (L - P)·0,5   >=  CD + Λ + Δ − P + Λ
+;     L   >=  P + 2·(CD + 2·Λ + Δ − P)  =  2·CD + 4·Λ + 2·Δ − P
+; Λ pesa em dois lugares: encurta o trecho de 1,0× (dentro de P − Λ) e atrasa
+; o instante em que o CD zera, e por isso aparece 4×. Δ entra 2×, uma na
+; folga do lado esquerdo e outra ao isolar L.
+; Este é o piso real. O "piso 3,5x" (soma dos seis CDs / 3,5) é um limite
+; inferior teórico que NUNCA é atingido aqui: ele supõe que os seis Pokémon
+; possam dividir o tempo fora da Ball, mas o tank só tem P ms disso por volta.
+;
+; RESTRIÇÃO DO SECUNDÁRIO. Ele fica fora da Ball desde a chamada do p2 até a
+; próxima troca, ou seja (w - P) da janela w, e o resto da volta a 0,5x. O
+; Window ainda precisa comportar o combo inteiro. Recuperação da volta:
+;     (w - P)·1,0 + (L - w + P)·0,5  >=  CD + Δ
+;   =>  w >= 2·(CD + Δ) − L + P
+; E a janela ainda precisa comportar o combo inteiro: w >= P + Gap + Post.
+;
+; Os três janelas somam exatamente L. A sobra sobre o mínimo é lure: tempo do
+; tank em campo antes do combo, que é escolha do jogador e serve ao CD do
+; Pokémon da dupla anterior, não ao dele.
 PlanHoenn222() {
     global Hoenn222_PlanCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
 
     if Hoenn222_PlanCache
         return Hoenn222_PlanCache
 
-    p := Hoenn222_MarginMs
-    extraTank := Hoenn222_LatencyMs + Hoenn222_MarginMs
-    extraSec := 0.5 * p + 0.5 * SleepAfterTankCombo + Hoenn222_LatencyMs + Hoenn222_MarginMs
-    X := []
+    lat := Hoenn222_LatencyMs
+    marg := Hoenn222_MarginMs
+    Pp := SleepAfterTankCombo                       ; tank fora depois do cast
+    minJanela := SleepAfterTankCombo + SleepAfterSwitch + SleepAfterCombo
+
+    ; --- piso do tank: maximo entre as tres duplas
+    L := 0
     timeIndex := 1
     while timeIndex <= 3 {
         cdTank := GetHoenn222CdMainMs(timeIndex, false)
-        cdSec := GetHoenn222CdMainMs(timeIndex, true)
-        X.Push(Max(cdTank + extraTank, cdSec + extraSec))
+        pisoTank := 2 * cdTank + 4 * lat + 2 * marg - Pp
+        ; Isolamento de (P-Lat)*1,0 + (L-P)*0,5 >= CD + Lat + Marg.
+        if (pisoTank > L)
+            L := pisoTank
         timeIndex += 1
     }
-    L := (X[1] + X[2] + X[3]) / 2
-    janelas := [2 * X[1] - L, 2 * X[2] - L, 2 * X[3] - L]
 
-    ; Inviabilidade: a janela nem comporta os dois casts.
-    minimo := SleepAfterTankCombo + SleepAfterSwitch
+    ; --- piso dos secundarios: menor L com soma(janelas) <= L.
+    ; A soma das janelas é decrescente em L, então a busca converge sempre.
+    lo := minJanela * 3
+    hi := Max(L, lo) * 2 + lo
+    while (lo < hi) {
+        meio := (lo + hi) / 2
+        total := 0
+        timeIndex := 1
+        while timeIndex <= 3 {
+            cdSec := GetHoenn222CdMainMs(timeIndex, true)
+            total += Max(minJanela, 2 * (cdSec + marg) - meio + Pp)
+            timeIndex += 1
+        }
+        if (total <= meio)
+            hi := meio
+        else
+            lo := meio + 1
+    }
+    if (lo > L)
+        L := lo
+
+    ; --- janelas finais
+    janelas := [0, 0, 0]
+    folgaLure := 0
     timeIndex := 1
     while timeIndex <= 3 {
-        if (janelas[timeIndex] < minimo) {
+        cdSec := GetHoenn222CdMainMs(timeIndex, true)
+        janelas[timeIndex] := Max(minJanela, 2 * (cdSec + marg) - L + Pp)
+        folgaLure += L / 3 - janelas[timeIndex]
+        timeIndex += 1
+    }
+
+    ; Inviabilidade real: a janela nem comporta o combo inteiro.
+    timeIndex := 1
+    while timeIndex <= 3 {
+        if (janelas[timeIndex] < minJanela) {
             SwitchDebug("CD_PLAN_INFEASIVEL", "time=" timeIndex " janela=" Round(janelas[timeIndex])
-                " precisa_de=" minimo " L=" Round(L))
-            janelas[timeIndex] := minimo
+                " precisa_de=" minJanela " L=" Round(L))
+            janelas[timeIndex] := minJanela
         }
         timeIndex += 1
     }
 
-    Hoenn222_PlanCache := { L: L, X: X, Janelas: janelas }
+    Hoenn222_PlanCache := { L: L, Janelas: janelas, FolgaLure: folgaLure, JanelaMinima: minJanela }
     SwitchDebug("CD_PLAN", "L=" Round(L) " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3])
-        " summon=" SleepAfterTankCombo " gap=" SleepAfterSwitch
-        " latency=" Hoenn222_LatencyMs " margin=" Hoenn222_MarginMs)
+        " lure_sobra=" Round(folgaLure)
+        " tank_fora_pos_cast=" Pp " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
+        " latency=" lat " margin=" marg)
     return Hoenn222_PlanCache
 }
 
@@ -457,12 +521,18 @@ Hoenn222CdRegistrarCast(timeIndex, secundario := false) {
 }
 
 Hoenn222CdRegistrarChamada(timeIndex) {
-    global Hoenn222_CdOptimizerEnabled, Hoenn222_RateOutOfBall, Hoenn222_LatencyMs
+    global Hoenn222_CdOptimizerEnabled, Hoenn222_RateOutOfBall, Hoenn222_RateInBall
+    global Hoenn222_LatencyMs
     if !Hoenn222_CdOptimizerEnabled
         return
     try {
+        tick := A_TickCount
+        ; APENAS UM POKEMON POR VEZ FORA DA BALL. Ao chamar o p2 o tank sai
+        ; de campo: se ele continuasse a 1,0x os dois recuperariam juntos e a
+        ; capacidade da volta passaria de 3,5x para 4,0x, inflando o plano.
+        Hoenn222CdSetRate(Hoenn222Slot(timeIndex, false), Hoenn222_RateInBall, tick)
         Hoenn222CdSetRate(Hoenn222Slot(timeIndex, true), Hoenn222_RateOutOfBall,
-            A_TickCount, Hoenn222_LatencyMs)
+            tick, Hoenn222_LatencyMs)
     } catch as e {
         SwitchDebug("SWITCH_ERROR", "phase=cd_call", e)
     }
