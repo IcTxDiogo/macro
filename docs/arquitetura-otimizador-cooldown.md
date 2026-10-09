@@ -162,22 +162,34 @@ O estado já decorrido nunca é reconstruído: é acumulado.
 
 ## 8. Estado da árvore de trabalho
 
-- Git **não está instalado** neste ambiente e não existe `.git`. O "protegido
-  por Git" não se aplica aqui; por isso a implementação parcial foi copiada
-  para `backup/` com um `LEIA-ME.txt`.
-- A implementação parcial em `main.ahk`, `config.ahk` e `src/*.ahk` **não
-  passa nos testes** e contém duas decisões que a revisão acima rejeitou:
-  `PrepareMs` artificial e extensão da espera do secundário.
-- O que nela já está correto e deve ser aproveitado: o acumulador preguiçoso
-  por slot (`Hoenn222Cd*`), o mapeamento tier → CD, o `PlanHoenn222()` com cache,
-  o cancelamento de pedido armado e o fallback para os alvos fixos.
-- Bug de runtime descoberto e corrigido durante essa tentativa: neste AutoHotkey
-  um índice **Float** de array é tratado como nome de propriedade. `for x in
-  1..N` gera Float e quebra o acesso. Todo índice precisa ser `Integer()`.
+Implementado e com a suíte de testes passando.
 
-**Decisão pendente com você:** reverter a implementação parcial e reimplementar
-a partir da arquitetura validada, ou reaproveitar o que já está bom e descartar
-apenas `PrepareMs` e a espera estendida.
+- **Git restaurado.** O repositório estava intacto — só o binário faltava após a
+  formatação. Instalado o Git 2.55.0, identidade `santos <ictxdiogo@gmail.com>`,
+  remote `https://github.com/IcTxDiogo/macro.git` intacto. `origin/main` é
+  ancestral direto: **sem divergência de histórico**, 4 commits locais à frente.
+- **Reaproveitado** da tentativa anterior: o acumulador preguiçoso por slot
+  (`Hoenn222Cd*`), o mapeamento tier → CD, o `PlanHoenn222()` com cache, o
+  cancelamento de pedido armado e o fallback para os alvos fixos.
+- **Descartado:** `PrepareMs` artificial e a extensão dinâmica da espera interna
+  do secundário. `GetHoenn222SecondaryWaitMs` não existe mais; os intervalos
+  são `SleepAfterTankCombo` e `SleepAfterSwitch`, os valores originais.
+- **Sem espera artificial:** com todos os CD zerados o alvo de COMBAR é só a
+  margem (250 ms). Se o secundário não couber, o verde não acende — o macro
+  avisa quem falta em vez de estender o intervalo.
+
+Correções de runtime encontradas durante a implementação:
+
+- Neste AutoHotkey um índice **Float** de array é tratado como nome de
+  propriedade. `for x in 1..N` gera Float e quebra o acesso. Todo índice passa
+  por `Integer()`.
+- Os alvos de `Hoenn222_BaseTargetMs` são **durações** contadas do início do
+  estado, nunca instantes absolutos — é assim que `Hoenn222_ComboTargetMs` e
+  `Hoenn222_SwitchTargetMs` são definidos, e é assim que
+  `GetHoenn222PendingMs()` desconta o decorrido.
+- O runner dos testes lia as fontes na codificação ANSI do console (aqui
+  ibm850), o que corrompia os acentos e produzia erro de sintaxe no script
+  gerado; e montava o arquivo com LF sobre fontes CRLF. Ambos corrigidos.
 
 ---
 

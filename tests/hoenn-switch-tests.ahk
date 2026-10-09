@@ -90,7 +90,7 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     Hoenn222_Cd := [0, 0, 0, 0, 0, 0]
     Hoenn222_CdRate := [0, 0, 0, 0, 0, 0]
     Hoenn222_CdSince := [0, 0, 0, 0, 0, 0]
-    Hoenn222_PlanCache := unset
+    global Hoenn222_PlanCache := false
     Hoenn222_CdAvisoFeito := false
     Hoenn222_CdOptimizerEnabled := true
     ResetarCooldownsHoenn222(MockTick)
@@ -359,28 +359,46 @@ RunTests() {
         Pass("ordered diagnostics distinguish requested send from visual entry")
 
         ; --- COMBO 2-2-2: NORMAL, ANTECIPADO E EMERGENCIA ---
-        ; Com o otimizador ligado o alvo de COMBAR e
-        ;   t_estado + max(PrepareMs, CD_do_tank + Latency + Margin ja decorridos).
-        ; Com o CD zerado sobra so o minimo fisico de preparacao.
+        ; Os alvos do otimizador sao DURACOES a partir do inicio do estado.
+        ; Nao existe espera artificial: com todos os CD zerados o verde so
+        ; depende da margem (250ms), e com o tank pronto quem segura o verde
+        ; e o secundario, ate que o CD dele caia abaixo da tolerancia (1900ms).
 
-        ResetCase("WAITING_COMBO", 0, 1000)
-        Assert(GetHoenn222ComboTargetMs(1) == MockTick - 1000 + Hoenn222_PrepareMs, "A alvo = estado + PrepareMs com CD pronto")
+        ResetCase("WAITING_COMBO", 0, 0)
+        Assert(Hoenn222_SecondaryToleranceMs == 1900, "A tolerancia = 0,5*2700 + 800 - 250")
+        Assert(GetHoenn222ComboTargetMs(1) == Hoenn222_MarginMs, "A sem CD o alvo e so a margem")
+        Assert(GetHoenn222ComboBloqueio(1) == "", "A com tudo pronto ninguem segura o verde")
+
+        ; Tank pronto, secundario com 43s fora da Ball: o verde e do secundario.
+        Hoenn222CdCast(1, true, MockTick)
+        Assert(GetHoenn222ComboTargetMs(1) == 43000 - 1900, "A alvo = (CD do secundario - 1900) / taxa")
+        Assert(GetHoenn222ComboBloqueio(1) == "secundario", "A secundario segurando o verde")
+        Assert(Hoenn222SecondaryPendenteMs(1, 0) > 0, "A antecipar agora deixaria o secundario atrasado")
         SolicitarComboHoenn222()
-        Assert(Hoenn222_ComboArmed && Hoenn222_ComboArmedTeam == 1, "A press before green arms")
-        Assert(Sent.Length == 0 && Scheduled.Length == 0, "A nothing sent while armed")
+        Assert(Hoenn222_ComboArmed && Hoenn222_ComboArmedTeam == 1, "A pressa antes do verde arma")
+        Assert(Scheduled.Length == 0, "A nada e enviado enquanto armado")
+        Assert(InStr(DebugText(), "CD_ANTECIPACAO"), "A avisa a antecipacao")
+        Assert(InStr(DebugText(), "bloqueio=secundario"), "A avisa quem esta segurando")
         GameLoop()
-        MockTick += Hoenn222_PrepareMs - 1000 - 1
+        Assert(Scheduled.Length == 0, "A continua esperando")
+        ; O alvo tambem encolhe conforme o CD recupera, entao o verde chega antes
+        ; dos 43s: com taxa 1,0 e tolerancia 1900, pending = 41350 - 2*decorrido.
+        MockTick += 20674
         GameLoop()
-        Assert(Scheduled.Length == 0, "A still waiting one ms before green")
+        Assert(Scheduled.Length == 0, "A 1ms antes do instante exato ainda nao dispara (pend="
+            GetHoenn222PendingMs() ")")
         MockTick += 1
         GameLoop()
-        Assert(Scheduled.Length == 1 && isRodizioAtivo, "A prepare=" Hoenn222_PrepareMs " margin=" Hoenn222_MarginMs " lat=" Hoenn222_LatencyMs " opt=" Hoenn222_CdOptimizerEnabled " alvo=" GetHoenn222ComboTargetMs(1) " rodizio=" isRodizioAtivo " mock=" MockTick)
-        Assert(!Hoenn222_ComboArmed && Hoenn222_ComboArmedTeam == 0, "A armed request consumed")
-        Assert(InStr(DebugText(), "COMBO_FIRED"), "A armed fire logged")
+        Assert(Scheduled.Length == 1 && isRodizioAtivo, "A agend=" Scheduled.Length " ativo=" isRodizioAtivo
+            " pend=" GetHoenn222PendingMs() " alvo=" GetHoenn222ComboTargetMs(1)
+            " cdSec=" CdOf(Hoenn222Slot(1, true)) " tol=" Hoenn222_SecondaryToleranceMs
+            " inicio=" Hoenn222_StateStartTick " mock=" MockTick)
+        Assert(!Hoenn222_ComboArmed && Hoenn222_ComboArmedTeam == 0, "A pedido armado consumido")
+        Assert(InStr(DebugText(), "COMBO_FIRED"), "A disparo armado registrado")
         Scheduled[1].Call()
-        Assert(Join(Sent) == "{y}|{c}|{f}|{i}|{2}|{y}|{c}|{f}|{i}", "A armed skill sequence")
-        Assert(!isRodizioAtivo, "A combo lock released")
-        Pass("A early press arms; the timer fires the combo once green")
+        Assert(Join(Sent) == "{y}|{c}|{f}|{i}|{2}|{y}|{c}|{f}|{i}", "A sequencia de skills armada")
+        Assert(!isRodizioAtivo, "A trava do combo liberada")
+        Pass("A pressa antecipada arma; o timer dispara o combo quando tank E secundario ficam viaveis")
 
         ResetCase("WAITING_COMBO", 0, 20000)
         GameLoop()
@@ -392,7 +410,12 @@ RunTests() {
         Assert(Join(Sent) == "{y}|{c}|{f}|{i}|{2}|{y}|{c}|{f}|{i}", "B skill sequence")
         Pass("B green waits for the press")
 
-        ResetCase("WAITING_COMBO", 0, 2000)
+        ; Sem CD o alvo e so a margem (250ms), entao "ainda nao verde"quer dizer
+        ; decorrido menor que a margem. Os grupos C, D e E dependem disso.
+        ResetCase("WAITING_COMBO", 0, 0)
+        ; CD real no secundario: assim o verde nao chega durante a janela de
+        ; emergencia e o teste mede a janela, nao o cronometro.
+        Hoenn222CdCast(1, true, MockTick)
         SolicitarComboHoenn222()
         Assert(Hoenn222_ComboArmed && Scheduled.Length == 0, "C first press only arms")
         MockTick += Hoenn222_EmergencyWindowMs + 1
@@ -407,7 +430,8 @@ RunTests() {
         Assert(Join(Sent) == "{y}|{c}|{f}|{i}|{2}|{y}|{c}|{f}|{i}", "C emergency sequence")
         savedWindow := Hoenn222_EmergencyWindowMs
         Hoenn222_EmergencyWindowMs := 0
-        ResetCase("WAITING_COMBO", 0, 2000)
+        ResetCase("WAITING_COMBO", 0, 0)
+        Hoenn222CdCast(1, true, MockTick)
         SolicitarComboHoenn222()
         MockTick += 1
         SolicitarComboHoenn222()
@@ -415,7 +439,7 @@ RunTests() {
         Hoenn222_EmergencyWindowMs := savedWindow
         Pass("C double press ignores the timer; zero window disables it")
 
-        ResetCase("WAITING_COMBO", 0, 1000)
+        ResetCase("WAITING_COMBO", 0, 0)
         SolicitarComboHoenn222()
         Assert(TrocarTimeHoenn(3), "D switch accepted")
         Assert(TimeAtual == 2 && !Hoenn222_ComboArmed && Hoenn222_ComboArmedTeam == 0, "D switch disarms")
@@ -425,7 +449,7 @@ RunTests() {
         Assert(Scheduled.Length == 0 && Sent.Length == 3, "D no combo leaks into the next team")
         Pass("D accepted team switch cancels the pending combo")
 
-        ResetCase("WAITING_COMBO", 0, 1000)
+        ResetCase("WAITING_COMBO", 0, 0)
         SolicitarComboHoenn222()
         ResincronizarHoenn222()
         Assert(!Hoenn222_ComboArmed && Hoenn222_State == "WAITING_FIRST_COMBO", "E resync disarms")
@@ -433,7 +457,7 @@ RunTests() {
         MockTick += 60000
         GameLoop()
         Assert(Scheduled.Length == 0, "E nothing runs after resync")
-        ResetCase("WAITING_COMBO", 0, 1000)
+        ResetCase("WAITING_COMBO", 0, 0)
         SolicitarComboHoenn222()
         TrocarModo()
         Assert(!Hoenn222_ComboArmed && ModoAtual == "Normal", "E mode change disarms")
@@ -443,24 +467,50 @@ RunTests() {
         Pass("E resync and mode change cancel the pending combo")
 
         ResetCase("WAITING_COMBO", 0, 0)
-        Assert(GetHoenn222CdMainMs(1, "tank") == 40000, "F tank tier maps to 40s")
-        Assert(GetHoenn222CdMainMs(1, "second") == 43000, "F second tier maps to 43s")
-        Assert(GetHoenn222CdMainMs(2, "tank") == 43000 && GetHoenn222CdMainMs(2, "second") == 43000, "F team 2 tiers")
-        Assert(GetHoenn222CdMainMs(3, "tank") == 43000 && GetHoenn222CdMainMs(3, "second") == 43000, "F team 3 tiers")
+        ; O segundo argumento e booleano: tank = falso, secundario = verdadeiro.
+        Assert(GetHoenn222CdMainMs(1, false) == 40000, "F tank tier maps to 40s")
+        Assert(GetHoenn222CdMainMs(1, true) == 43000, "F second tier maps to 43s")
+        Assert(GetHoenn222CdMainMs(2, false) == 43000 && GetHoenn222CdMainMs(2, true) == 43000, "F team 2 tiers")
+        Assert(GetHoenn222CdMainMs(3, false) == 43000 && GetHoenn222CdMainMs(3, true) == 43000, "F team 3 tiers")
         savedTankTier := Hoenn222_TankTier[1]
         Hoenn222_TankTier[1] := "SR"
-        Assert(GetHoenn222CdMainMs(1, "tank") == 45000, "F changing only the tier changes only the CD")
+        Assert(GetHoenn222CdMainMs(1, false) == 45000, "F changing only the tier changes only the CD")
         Hoenn222_TankTier[1] := savedTankTier
         Assert(GetHoenn222TierText(9, "tank") == "?", "F unknown team falls back")
         PlanHoenn222()
         Assert(Hoenn222_PlanCache.L > 0 && Hoenn222_PlanCache.Janelas.Length == 3, "F plan cached with three windows")
-        Assert(Hoenn222_PlanCache.Janelas[2] > Hoenn222_PlanCache.Janelas[1], "F higher secondary CD gets a longer window")
-        Hoenn222_PrepareMs := 2000
-        Hoenn222_PlanCache := unset
+        ; Janelas diferentes so quando os CDs por dupla sao diferentes. Com os
+        ; tiers atuais todas as duplas exigem o mesmo X, entao todas as janelas
+        ; sao iguais e a volta e L = soma(X)/2.
+        somaJanelas := 0
+        for k in [1, 2, 3]
+            somaJanelas += Hoenn222_PlanCache.Janelas[k]
+        Assert(Abs(somaJanelas - Hoenn222_PlanCache.L) < 1, "F a soma das janelas e a volta L")
+        ; Uma janela menor que a fisica minima do proprio combo seria inviavel.
+        minimo := SleepAfterTankCombo + SleepAfterSwitch
+        for k in [1, 2, 3]
+            Assert(Hoenn222_PlanCache.Janelas[k] >= minimo, "F janela da dupla " k " comporta 2700 + 800")
+        ; Sustentabilidade real: cada tank recupera na propria janela a 1,0 e
+        ; nas outras duas a 0,5. Se isso nao cobre o CD, a volta nao se sustenta.
+        for k in [1, 2, 3] {
+            dentro := Hoenn222_PlanCache.L - Hoenn222_PlanCache.Janelas[k]
+            recupera := Hoenn222_PlanCache.Janelas[k] + dentro * Hoenn222_RateInBall
+            Assert(recupera >= GetHoenn222CdMainMs(k, false), "F tank da dupla " k
+                " recupera " Round(recupera) "ms para um CD de " GetHoenn222CdMainMs(k, false) "ms")
+        }
+        ; O plano so depende da configuracao, entao e estavel e fica em cache.
+        janela1 := Hoenn222_PlanCache.Janelas[1]
+        global Hoenn222_PlanCache := false
         plano2 := PlanHoenn222()
-        Assert(plano2.L < Hoenn222_PlanCache.L, "F smaller Prepare shortens the lap")
-        Hoenn222_PrepareMs := 4000
-        Hoenn222_PlanCache := unset
+        Assert(plano2.Janelas[1] == janela1 && plano2.L == Hoenn222_PlanCache.L, "F mesma configuracao, mesmo plano")
+        savedTierTime1 := Hoenn222_TankTier[1]
+        Hoenn222_TankTier[1] := "SR"
+        global Hoenn222_PlanCache := false
+        plano3 := PlanHoenn222()
+        Assert(plano3.Janelas[1] != janela1, "F tier mais alto da mais janela a dupla 1")
+        Hoenn222_TankTier[1] := savedTierTime1
+        global Hoenn222_PlanCache := false
+        PlanHoenn222()
         ResetCase("WAITING_COMBO", 0, 1000)
         AtualizarTooltipsControle()
         Assert(Rendered.Length == 2 && InStr(Rendered[2].text, "Tank: ") && InStr(Rendered[2].text, "Sec: "), "F tiers shown")
@@ -468,39 +518,51 @@ RunTests() {
 
         ResetCase("WAITING_COMBO", 0, 0)
         Hoenn222CdCast(1, false, MockTick)
+        ; O CD so comeca a contar LatencyMs depois do comando; ate la ele vale cheio.
+        MockTick += Hoenn222_LatencyMs
         Assert(CdOf(Hoenn222Slot(1, false)) == 40000, "H cast loads the CD main and keeps rate out of ball")
         Assert(CdRateOf(Hoenn222Slot(1, false)) == 1.0, "H casting implies out of ball")
-        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 40250, "H ready = CD + latency + margin")
-        Hoenn222_StateStartTick := MockTick
-        Assert(GetHoenn222ComboTargetMs(1) == MockTick + 40250, "H COMBAR target follows the CD, not a constant")
+        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 40250, "H ready = CD + margin")
+        Assert(GetHoenn222ComboTargetMs(1) == 40250, "H COMBAR target follows the tank CD, not a constant")
+        Assert(GetHoenn222ComboBloqueio(1) == "tank", "H tank segurando o verde")
         Hoenn222CdSetRate(Hoenn222Slot(1, false), Hoenn222_RateInBall, MockTick)
+        ; 20000ms dentro da Ball a 0,5 tiram 10000ms de CD, nao 20000.
         MockTick += 20000
-        Assert(CdOf(Hoenn222Slot(1, false)) == 30000, "H 40000 - 20000 a 0,5 = 30000")
-        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 60250, "H in the ball the same CD costs twice the time")
+        Assert(CdOf(Hoenn222Slot(1, false)) == 30000, "H 20000ms a 0,5 tiram 10000ms de CD")
+        Assert(Hoenn222CdReadyInMs(Hoenn222Slot(1, false), MockTick) == 30000 / Hoenn222_RateInBall + Hoenn222_MarginMs, "H dentro da Ball o mesmo CD custa o dobro")
         Pass("H target follows the individual CD and the in-ball rate")
 
+; --- INTERVALOS INTERNOS: NUNCA ESTENDIDOS ---
+        ; O macro nao estende a espera entre tank, chamada e secundario. Se o
+        ; secundario nao couber, o verde simplesmente nao acende e o macro avisa.
+        Assert(SleepAfterTankCombo == 2700, "I animacao do tank continua 2700")
+        Assert(SleepAfterSwitch == 800, "I intervalo antes do secundario continua 800")
         ResetCase("WAITING_COMBO", 0, 0)
-        Assert(GetHoenn222SecondaryWaitMs(1, MockTick) == Hoenn222_SecondaryGapMs, "I animation is the floor")
         Hoenn222CdCast(1, true, MockTick)
-        Hoenn222CdSetRate(Hoenn222Slot(1, true), Hoenn222_RateOutOfBall, MockTick, Hoenn222_LatencyMs)
-        MockTick += 1000
-        espera := GetHoenn222SecondaryWaitMs(1, MockTick)
-        Assert(espera == 42000 - 1000 + Hoenn222_MarginMs, "I wait extends to the first safe instant of the secondary")
-        Assert(espera > Hoenn222_SecondaryGapMs, "I no fixed multi-second wait")
-        Hoenn222_CdOptimizerEnabled := false
-        Assert(GetHoenn222SecondaryWaitMs(1, MockTick) == Hoenn222_SecondaryGapMs, "I disabled optimizer keeps 2700/800")
-        Hoenn222_CdOptimizerEnabled := true
-        Pass("I secondary wait is the animation floor extended by its own CD")
+        Assert(Hoenn222SecondaryPendenteMs(1, 0) > 0, "I secundario em CD aberto e inviável para comecar agora")
+        ComboComplexoHoenn222()
+        Scheduled[1].Call()
+        Assert(InStr(Join(Timeline), "sleep:2700|send:{2}|sleep:800"), "I a sequencia interna nao e estendida pelo CD")
+        Assert(InStr(Join(Timeline), "sleep:3000"), "I pos-combo inalterado")
+        Pass("I os intervalos internos 2700/800 nunca sao estendidos")
 
+; --- OTIMIZADOR DESLIGADO: VOLTA AOS ALVOS FIXOS ---
+        ; Alvos sao sempre DURACOES contadas do inicio do estado, nos dois modos.
         ResetCase("WAITING_COMBO", 0, 0)
         Hoenn222_CdOptimizerEnabled := false
-        Assert(GetHoenn222ComboTargetMs(1) == Hoenn222_StateStartTick + Hoenn222_ComboTargetMs[1], "J fallback uses the fixed target")
-        Hoenn222_State := "WAITING_TEAM_SWITCH"
-        Assert(GetHoenn222SwitchTargetMs(1) == Hoenn222_StateStartTick + Hoenn222_SwitchTargetMs[1], "J fallback switch target")
+        Assert(RealBaseTarget("WAITING_COMBO", 1) == Hoenn222_ComboTargetMs[1], "J sem otimizador usa o alvo fixo de COMBAR")
+        Assert(RealBaseTarget("WAITING_TEAM_SWITCH", 1) == Hoenn222_SwitchTargetMs[1], "J alvo fixo de TROCAR TIME")
+        Assert(GetHoenn222PendingMs() == Hoenn222_ComboTargetMs[1], "J o pendente e o alvo menos o decorrido")
         Hoenn222_CdOptimizerEnabled := true
-        MockTick += 5000
-        Assert(GetHoenn222ComboTargetMs(1) == Hoenn222_StateStartTick + Hoenn222_PrepareMs, "J optimizer target restored")
-        Pass("J optimizer off falls back to the fixed targets with no other change")
+        Assert(RealBaseTarget("WAITING_COMBO", 1) == GetHoenn222ComboTargetMs(1), "J com otimizador COMBAR vem do CD real")
+        Assert(RealBaseTarget("WAITING_COMBO", 1) == Hoenn222_MarginMs, "J sem CD, COMBAR e so a margem")
+        janela := GetHoenn222SwitchTargetMs(1)
+        Assert(janela == Hoenn222_PlanCache.Janelas[1], "J TROCAR TIME usa a janela planejada")
+        Assert(RealBaseTarget("WAITING_TEAM_SWITCH", 1) == janela, "J a janela tambem e uma duracao")
+        Assert(GetHoenn222PendingMs() == Hoenn222_MarginMs, "J pendente com todos os CD zerados")
+        MockTick += 1000
+        Assert(GetHoenn222PendingMs() == Hoenn222_MarginMs - 1000, "J 1000ms decorridos tiram 1000ms do pendente")
+        Pass("J desligar o otimizador volta aos alvos fixos sem nenhuma outra mudanca")
 
         ResetCase()
         ComboComplexoHoenn222()

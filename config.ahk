@@ -67,23 +67,24 @@ global Hoenn222_EmergencyWindowMs := 400
 
 ; --- HOENN 2-2-2: COOLDOWN INDIVIDUAL DOS 6 POKEMON ---
 ; Cada Pokemon mantem seu proprio acumulador de cooldown restante, atualizado
-; pelos eventos reais do macro (cast, entrada e saida da Ball, troca de time).
+; pelos eventos reais do macro: cast, entrada e saida da Ball e troca de time.
 ;
 ; CdByTier ....... CD principal pelo rotulo do tier (o maior cooldown manda).
-;                  Aceita qualquer rotulo; um tier desconhecido usa CdDefaultMs.
+;                  Aceita qualquer rotulo; tier desconhecido usa CdDefaultMs.
 ; RateOut/In ..... recuperacao de CD por segundo real, fora e dentro da Ball.
-; LatencyMs ...... o jogo so comeca a contar o CD LatencyMs depois do comando.
-; MarginMs ....... a skill so e usavel MarginMs depois do CD estimado zerar.
+; LatencyMs ...... o jogo so comeca a contar o CD este tempo depois do comando
+;                  da skill. E o unico offset entre a skill e a recuperacao.
+; MarginMs ....... a skill so e usavel este tempo depois do CD estimado zerar.
 ;                  Os dois se somam: com 250 + 250 o modelo tolera ate 500ms de
 ;                  latencia real antes de qualquer cast antecipado.
-; PrepareMs ...... minimo FISICO entre entrar no time e o cast do tank
-;                  (deslocamento + inicio do lure). Nao e margem de seguranca.
-; SummonMs ....... animacao do jogo entre o cast do tank e a chamada do
-;                  secundario. Mecanica, nao espera de cooldown.
-; SecondaryGapMs . intervalo entre a chamada e o cast do secundario.
+;
+; Os intervalos internos do combo NAO sao configuraveis aqui de proposito:
+; sao SleepAfterTankCombo (2700) e SleepAfterSwitch (800), os mesmos valores
+; de sempre. O otimizador nunca os altera; se o secundario nao estiver pronto
+; no instante fixo do seu cast, o macro avisa em vez de estender a espera.
 ;
 ; Desligue o otimizador para voltar aos alvos fixos de Hoenn222_ComboTargetMs e
-; Hoenn222_SwitchTargetMs; nenhuma outramudanca e necessaria.
+; Hoenn222_SwitchTargetMs; nenhuma outra mudanca e necessaria.
 global Hoenn222_CdOptimizerEnabled := true
 global Hoenn222_CdByTier := Map("Lendário", 40000, "UR", 43000, "SR", 45000, "T1", 50000)
 global Hoenn222_CdDefaultMs := 50000
@@ -91,6 +92,3 @@ global Hoenn222_RateOutOfBall := 1.0
 global Hoenn222_RateInBall := 0.5
 global Hoenn222_LatencyMs := 250
 global Hoenn222_MarginMs := 250
-global Hoenn222_PrepareMs := 4000
-global Hoenn222_SummonMs := 2700
-global Hoenn222_SecondaryGapMs := 800

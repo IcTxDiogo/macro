@@ -196,6 +196,16 @@ GetHoenn222Tooltip() {
 
     if (Hoenn222_ComboArmed) {
         str .= "`nCOMBO ARMADO`n"
+        ; Antecipacao segura: o macro avisa QUEM falta e o quanto o secundario
+        ; ficaria atrasado, sem inventar cooldown nem estender a espera interna.
+        if (Hoenn222_State == "WAITING_COMBO" && Hoenn222_CdOptimizerEnabled) {
+            bloqueio := GetHoenn222ComboBloqueio(TimeAtual)
+            if (bloqueio == "secundario") {
+                str .= "secundario CD +" Round(Hoenn222SecondaryPendenteMs(TimeAtual, 0) / 1000, 1) "s`n"
+            } else if (bloqueio == "tank") {
+                str .= "tank em CD`n"
+            }
+        }
     }
 
     return str

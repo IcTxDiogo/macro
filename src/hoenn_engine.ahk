@@ -24,7 +24,13 @@ global Hoenn222_ComboArmed := false
 global Hoenn222_ComboArmedTeam := 0
 global Hoenn222_ComboLastPressTick := 0
 global Hoenn222_CdAvisoFeito := false
-global Hoenn222_PlanCache := unset
+; Cache do plano. Comeca em false (nunca planejado); ler uma variavel `unset`
+; e erro neste AutoHotkey, entao nunca usamos `unset` aqui.
+global Hoenn222_PlanCache := false
+; Teto de CD do secundario no instante T0. Entre T0 e a chamada ele ainda esta
+; na Ball (0,5 x 2700); depois recupera 1,0 x 800 ate o cast, e a margem de
+; 250ms ainda tem de caber antes dele. 1900ms com os valores atuais.
+global Hoenn222_SecondaryToleranceMs := 0.5 * SleepAfterTankCombo + SleepAfterSwitch - Hoenn222_MarginMs
 
 global Hoenn222_TankEnterTick := Map(1, 0, 2, 0, 3, 0)
 global Hoenn222_P2EnterTick := Map(1, 0, 2, 0, 3, 0)
@@ -240,7 +246,7 @@ ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem := "manual") {
         ; carregado, que e o lado conservador. Contagem e envio nunca divergem.
         Hoenn222CdRegistrarCast(timeDaExecucao)
         ComboSimples() ; Bate com o p1 (que já está fora)
-        Sleep(Max(Hoenn222_SummonMs, 0))
+        Sleep(SleepAfterTankCombo) ; animação do jogo: valor original, nunca alterado
 
         ; Se o time ou modo mudou durante o sleep do tank, cancela o resto da invocação
         if (timeDaExecucao != TimeAtual || ModoAtual != "Hoenn222") {
@@ -255,7 +261,9 @@ ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem := "manual") {
 
         ControlSend("{" p2 "}", , GameWindow) ; Chama p2
         Hoenn222CdRegistrarChamada(timeDaExecucao)
-        Sleep(GetHoenn222SecondaryWaitMs(timeDaExecucao, A_TickCount))
+        ; Intervalo interno original. Se o CD do secundário não couber aqui, o
+        ; macro não estende a espera: ele avisou antes, no verde do combo.
+        Sleep(SleepAfterSwitch)
 
         ; Verificação extra antes do P2 bater (evita enviar skill para time trocado após chamar P2)
         if (timeDaExecucao != TimeAtual || ModoAtual != "Hoenn222") {
@@ -271,54 +279,141 @@ ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem := "manual") {
     }
 }
 
-; Alvo do cronômetro para a fase e a dupla informadas. É um instante absoluto.
-; Com o otimizador ligado o alvo vem do estado real dos seis Pokémon; desligado,
+; Alvo do cronometro para a fase e a dupla informadas. E sempre uma DURACAO em
+; ms contada a partir do inicio do estado, nunca um instante absoluto: e assim
+; que Hoenn222_ComboTargetMs e Hoenn222_SwitchTargetMs sao definidos no config,
+; e e assim que GetHoenn222PendingMs() desconta o tempo ja decorrido.
+; Com o otimizador ligado o alvo vem do estado real dos seis Pokemon; desligado,
 ; ou se qualquer coisa falhar, volta aos alvos fixos do config.ahk.
 GetHoenn222BaseTargetMs(state, timeIndex) {
     global Hoenn222_CdOptimizerEnabled, Hoenn222_ComboTargetMs, Hoenn222_SwitchTargetMs
 
-    if (state == "WAITING_COMBO" || state == "WAITING_TEAM_SWITCH") {
-        if Hoenn222_CdOptimizerEnabled {
-            try {
-                return (state == "WAITING_COMBO")
-                    ? GetHoenn222ComboTargetMs(timeIndex)
-                    : GetHoenn222SwitchTargetMs(timeIndex)
-            } catch as e {
-                SwitchDebug("SWITCH_ERROR", "phase=cd_target state=" state, e)
-            }
+    if (state != "WAITING_COMBO" && state != "WAITING_TEAM_SWITCH")
+        return 0
+
+    if Hoenn222_CdOptimizerEnabled {
+        try {
+            return (state == "WAITING_COMBO")
+                ? GetHoenn222ComboTargetMs(timeIndex)
+                : GetHoenn222SwitchTargetMs(timeIndex)
+        } catch as e {
+            SwitchDebug("SWITCH_ERROR", "phase=cd_target state=" state, e)
         }
-        return (state == "WAITING_COMBO")
-            ? GetHoenn222TargetFromConfig(Hoenn222_ComboTargetMs, timeIndex)
-            : GetHoenn222TargetFromConfig(Hoenn222_SwitchTargetMs, timeIndex)
     }
-    return 0
+    return (state == "WAITING_COMBO")
+        ? GetHoenn222TargetFromConfig(Hoenn222_ComboTargetMs, timeIndex)
+        : GetHoenn222TargetFromConfig(Hoenn222_SwitchTargetMs, timeIndex)
 }
 
+; Alvos fixos do config.ahk, por dupla. Usado quando o otimizador esta
+; desligado e como destino de fallback se o estado real nao puder ser lido.
+GetHoenn222TargetFromConfig(mapaTarget, timeIndex) {
+    try {
+        return (IsObject(mapaTarget) && mapaTarget.Has(timeIndex)) ? mapaTarget[timeIndex] : 0
+    } catch as e {
+        SwitchDebug("SWITCH_ERROR", "phase=target_config team=" timeIndex, e)
+        return 0
+    }
+}
+
+GetHoenn222TierText(timeIndex, role := "tank") {
+    global Hoenn222_TankTier, Hoenn222_SecondTier
+    timeIndex := Integer(timeIndex)
+    try {
+        mapaTier := (role == "second") ? Hoenn222_SecondTier : Hoenn222_TankTier
+        return (IsObject(mapaTier) && mapaTier.Has(timeIndex) && mapaTier[timeIndex] != "")
+            ? mapaTier[timeIndex] : "?"
+    } catch as e {
+        SwitchDebug("SWITCH_ERROR", "phase=tier_config role=" role " team=" timeIndex, e)
+        return "?"
+    }
+}
+
+; Quanto falta, em ms, para o alvo da fase atual. E uma DURACAO, nunca um
+; instante absoluto; quem compara com o relogio e o alvo da propria fase.
+GetHoenn222PendingMs() {
+    global Hoenn222_State, Hoenn222_StateStartTick, TimeAtual
+    if (Hoenn222_State == "WAITING_FIRST_COMBO") {
+        return 0
+    }
+    idealMs := GetHoenn222BaseTargetMs(Hoenn222_State, TimeAtual)
+    return idealMs - (A_TickCount - Hoenn222_StateStartTick)
+}
+
+; COMBAR: quantos ms ate o combo INTEIRO ser viavel com os tempos internos fixos.
+; Nao ha espera artificial: o macro nao impoe nada alem do cooldown.
+;   Tank      : CD zerado + margem <= T0
+;   Secundario: entre T0 e a chamada ele ainda esta na Ball (0,5 x 2700) e so
+;               recupera 1,0 x 800 ate o cast; a margem ainda tem de caber.
+;               Dai o teto SEC_TOL = 0,5*SleepAfterTankCombo + SleepAfterSwitch
+;               - Margin, medido em CD que o secundario pode ter em T0.
+; E o maior dos dois: o verde so acende quando tank E secundario estao viaveis.
 GetHoenn222ComboTargetMs(timeIndex) {
-    global Hoenn222_PrepareMs
-    return Max(Hoenn222_PrepareMs, Hoenn222CdReadyInMs(Hoenn222Slot(timeIndex, false), A_TickCount))
+    global Hoenn222_SecondaryToleranceMs
+    tankMs := Hoenn222CdReadyInMs(Hoenn222Slot(timeIndex, false), A_TickCount)
+    secSlot := Hoenn222Slot(timeIndex, true)
+    cdSec := Hoenn222CdTouched(secSlot, A_TickCount)
+    secMs := 0
+    if (cdSec > Hoenn222_SecondaryToleranceMs)
+        secMs := (cdSec - Hoenn222_SecondaryToleranceMs) / Hoenn222CdRateOf(secSlot)
+    return Max(0, Max(tankMs, secMs))
 }
 
-; TROCAR TIME: menor janela sustainable desta dupla. TargetDuration e sempre
-; uma DURACAO a partir do inicio do estado, nunca um instante absoluto.
+; Quanto de CD o secundario ainda teria no seu cast se o combo comecasse agora.
+; E o que permite avisar "nao viavel" sem nunca inventar cooldown disponivel.
+Hoenn222SecondaryPendenteMs(timeIndex, offsetMs) {
+    global Hoenn222_SecondaryToleranceMs
+    slot := Hoenn222Slot(timeIndex, true)
+    agora := A_TickCount
+    cd := Hoenn222CdTouched(slot, agora)
+    taxa := Hoenn222CdRateOf(slot)
+    restante := cd - (offsetMs * taxa)
+    if (restante < 0)
+        restante := 0
+    ; entre o inicio do combo e a chamada o secundario segue dentro da Ball
+    emT1 := restante - SleepAfterTankCombo * taxa
+    if (emT1 < 0)
+        emT1 := 0
+    pendente := emT1 - SleepAfterSwitch + Hoenn222_MarginMs
+    return pendente > 0 ? pendente : 0
+}
+
+; Quem esta segurando o verde: "secundario", "tank" ou "" quando ja esta viavel.
+; E diagnostico: nao altera nenhum alvo, so diz ao jogador o que falta.
+GetHoenn222ComboBloqueio(timeIndex) {
+    global Hoenn222_SecondaryToleranceMs
+    secSlot := Hoenn222Slot(timeIndex, true)
+    cdSec := Hoenn222CdTouched(secSlot, A_TickCount)
+    if (cdSec > Hoenn222_SecondaryToleranceMs)
+        return "secundario"
+    if (Hoenn222CdTouched(Hoenn222Slot(timeIndex, false), A_TickCount) > 0)
+        return "tank"
+    return ""
+}
+
+; TROCAR TIME: menor janela sustainable desta dupla. E sempre uma DURACAO a
+; partir do inicio do estado, nunca um instante absoluto.
 GetHoenn222SwitchTargetMs(timeIndex) {
     return PlanHoenn222().Janelas[timeIndex]
 }
 
-; Planejador da volta. Não depende do estado em execução: usa os CDs principais
-; por tier e os parâmetros físicos, então o resultado é estável e pode ser cacheado.
-;   tank:      X >= cdTank + 1,5*Latency + Margin
-;   secundário:X >= cdSec  + 0,5*Prepare + 0,5*Summon + 1,5*Latency + Margin
+; Planejador global das tres duplas. Depende so da configuracao, entao o
+; resultado e estavel e fica em cache; os alvos de cada fase sao rederivados a
+; cada leitura a partir do estado real dos seis Pokemon.
+;   Tank      : X >= cdTank + Latency + Margin            (independe de p)
+;   Secundario: X >= cdSec  + 0,5*p + 0,5*Summon + Latency + Margin
 ;   L = soma(X)/2 e janela = 2*X - L
+; p e o offset do cast do tank; como o tank e usado no primeiro instante seguro,
+; p = Margin.
 PlanHoenn222() {
-    global Hoenn222_PlanCache, Hoenn222_PrepareMs, Hoenn222_SummonMs
-    global Hoenn222_LatencyMs, Hoenn222_MarginMs
+    global Hoenn222_PlanCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
 
-    if IsObject(Hoenn222_PlanCache)
+    if Hoenn222_PlanCache
         return Hoenn222_PlanCache
 
-    extraTank := 1.5 * Hoenn222_LatencyMs + Hoenn222_MarginMs
-    extraSec := 0.5 * Hoenn222_PrepareMs + 0.5 * Hoenn222_SummonMs + 1.5 * Hoenn222_LatencyMs + Hoenn222_MarginMs
+    p := Hoenn222_MarginMs
+    extraTank := Hoenn222_LatencyMs + Hoenn222_MarginMs
+    extraSec := 0.5 * p + 0.5 * SleepAfterTankCombo + Hoenn222_LatencyMs + Hoenn222_MarginMs
     X := []
     timeIndex := 1
     while timeIndex <= 3 {
@@ -331,7 +426,7 @@ PlanHoenn222() {
     janelas := [2 * X[1] - L, 2 * X[2] - L, 2 * X[3] - L]
 
     ; Inviabilidade: a janela nem comporta os dois casts.
-    minimo := Hoenn222_PrepareMs + Hoenn222_SummonMs + Hoenn222_SecondaryGapMs
+    minimo := SleepAfterTankCombo + SleepAfterSwitch
     timeIndex := 1
     while timeIndex <= 3 {
         if (janelas[timeIndex] < minimo) {
@@ -344,8 +439,8 @@ PlanHoenn222() {
 
     Hoenn222_PlanCache := { L: L, X: X, Janelas: janelas }
     SwitchDebug("CD_PLAN", "L=" Round(L) " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3])
-        " prepare=" Hoenn222_PrepareMs " summon=" Hoenn222_SummonMs " latency=" Hoenn222_LatencyMs
-        " margin=" Hoenn222_MarginMs)
+        " summon=" SleepAfterTankCombo " gap=" SleepAfterSwitch
+        " latency=" Hoenn222_LatencyMs " margin=" Hoenn222_MarginMs)
     return Hoenn222_PlanCache
 }
 
@@ -373,62 +468,6 @@ Hoenn222CdRegistrarChamada(timeIndex) {
     }
 }
 
-; Espera entre chamar e combar com o secundário: a animação do jogo é o piso, e
-; o cooldown pode estender. Nunca há espera fixa "porque ainda não está pronto".
-GetHoenn222SecondaryWaitMs(timeIndex, tick) {
-    global Hoenn222_CdOptimizerEnabled, Hoenn222_SecondaryGapMs
-    piso := Hoenn222_SecondaryGapMs
-    if !Hoenn222_CdOptimizerEnabled
-        return piso
-    try {
-        faltando := Hoenn222CdReadyInMs(Hoenn222Slot(timeIndex, true), tick)
-        if (faltando > piso) {
-            SwitchDebug("CD_SEC_ESPERA", "time=" timeIndex " faltava=" Round(faltando) " piso=" piso)
-            return faltando
-        }
-    } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=cd_secondary_wait", e)
-    }
-    return piso
-}
-
-; Le um alvo do config.ahk. Mapa ausente, invalido ou sem a dupla devolve 0
-; em vez de derrubar o cronometro inteiro.
-GetHoenn222TargetFromConfig(mapaTarget, timeIndex) {
-    try {
-        return (IsObject(mapaTarget) && mapaTarget.Has(timeIndex)) ? mapaTarget[timeIndex] : 0
-    } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=target_config team=" timeIndex, e)
-        return 0
-    }
-}
-
-; Rotulo do tier configurado para a dupla. Texto livre: o que estiver no
-; config.ahk aparece no indicador, sem nenhuma conversao fixa no codigo.
-GetHoenn222TierText(timeIndex, role := "tank") {
-    global Hoenn222_TankTier, Hoenn222_SecondTier
-    timeIndex := Integer(timeIndex)
-    try {
-        mapaTier := (role == "second") ? Hoenn222_SecondTier : Hoenn222_TankTier
-        return (IsObject(mapaTier) && mapaTier.Has(timeIndex) && mapaTier[timeIndex] != "")
-            ? mapaTier[timeIndex] : "?"
-    } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=tier_config role=" role " team=" timeIndex, e)
-        return "?"
-    }
-}
-
-; Milissegundos que ainda faltam para o contador ficar verde (<= 0 = pronto).
-; Fonte unica de verdade: o indicador visual e o combo antecipado leem daqui.
-GetHoenn222PendingMs() {
-    global Hoenn222_State, Hoenn222_StateStartTick, TimeAtual
-    if (Hoenn222_State == "WAITING_FIRST_COMBO") {
-        return 0
-    }
-    idealMs := GetHoenn222BaseTargetMs(Hoenn222_State, TimeAtual)
-    return idealMs - (A_TickCount - Hoenn222_StateStartTick)
-}
-
 ; --- COOLDOWN INDIVIDUAL DOS 6 POKEMON ---
 ; Acumulador preguiçoso: o estado so e atualizado na leitura (CdTouch). Qualquer
 ; leitura ou escrita chama CdTouch antes, entao nenhum evento precisa propagar
@@ -437,6 +476,20 @@ GetHoenn222PendingMs() {
 global Hoenn222_Cd := [0, 0, 0, 0, 0, 0]
 global Hoenn222_CdRate := [0, 0, 0, 0, 0, 0]
 global Hoenn222_CdSince := [0, 0, 0, 0, 0, 0]
+
+; Le o CD restante ja com a recuperacao ate `tick` aplicada.
+Hoenn222CdTouched(slot, tick) {
+    global Hoenn222_Cd
+    Hoenn222CdTouch(slot, tick)
+    return Hoenn222_Cd[slot]
+}
+
+Hoenn222CdRateOf(slot) {
+    global Hoenn222_CdRate
+    Hoenn222CdTouch(slot, A_TickCount)
+    taxa := Hoenn222_CdRate[slot]
+    return taxa > 0 ? taxa : 1
+}
 
 ; Integer() e obrigatorio: neste AutoHotkey um indice Float seria tratado como
 ; nome de propriedade e o acesso ao array falharia.
@@ -529,7 +582,7 @@ Hoenn222CdTrocaTime(previousTeam, nextTeam, tick) {
         for secundario in [false, true] {
             Hoenn222CdSetRate(Hoenn222Slot(previousTeam, secundario), Hoenn222_RateInBall, tick)
         }
-        Hoenn222CdSetRate(Hoenn222Slot(nextTeam, false), Hoenn222_RateOutOfBall, tick, Hoenn222_LatencyMs)
+        Hoenn222CdSetRate(Hoenn222Slot(nextTeam, false), Hoenn222_RateOutOfBall, tick)
         ; o secundario da dupla nova continua na Ball ate a chamada no combo
     } catch as e {
         SwitchDebug("SWITCH_ERROR", "phase=cd_team_switch", e)
@@ -587,6 +640,12 @@ SolicitarComboHoenn222() {
         return
     }
 
+    ; Pedido antes do verde: o macro arma e espera o instante certo, e registra
+    ; quem esta segurando e o quanto o secundario ficaria atrasado no seu cast.
+    bloqueio := GetHoenn222ComboBloqueio(TimeAtual)
+    SwitchDebug("CD_ANTECIPACAO", "time=" TimeAtual " bloqueio=" bloqueio
+        " falta_ms=" Round(faltandoMs) " sec_cast_ms=" Hoenn222SecondaryPendenteMs(TimeAtual, 0))
+
     ; Antecipado: um pedido por vez, sempre preso ao time em que foi feito.
     previousCritical := A_IsCritical
     Critical("On")
@@ -598,7 +657,6 @@ SolicitarComboHoenn222() {
     }
     SwitchDebug("COMBO_ARMED", "team=" Hoenn222_ComboArmedTeam " missing_ms=" faltandoMs)
 }
-
 ; Chamado pelo laco de 30 ms. Dispara o pedido armado assim que o contador fica
 ; verde, sem pressionar o botao de novo.
 ProcessarComboArmadoHoenn222() {

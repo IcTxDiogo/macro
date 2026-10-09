@@ -13,10 +13,12 @@ if ($LoggerInitFailure) {
 }
 
 function Read-TestSource([string]$relativePath) {
-    $source = Get-Content -LiteralPath (Join-Path $SourceRoot $relativePath) -Raw
+    $source = Get-Content -LiteralPath (Join-Path $SourceRoot $relativePath) -Raw -Encoding UTF8
     # Nunca carregar includes, hotkeys, polling ou a inicialização XInput do aplicativo.
     $source = [regex]::Replace($source, '(?m)^#.*\r?\n', '')
-    return $source
+    # Normaliza para CRLF: as fontes do projeto sao CRLF e o runner juntava com
+    # LF, o que gerava fim de linha misto e erro de sintaxe no script gerado.
+    return ([regex]::Replace($source, "(?<!`r)`n", "`r`n"))
 }
 
 $main = Read-TestSource 'main.ahk'
@@ -28,7 +30,7 @@ $logger = Read-TestSource 'src/logger.ahk'
 $logger = $logger.Replace('A_ScriptDir "\logs"', 'A_ScriptDir "\session_logs"')
 $logger = $logger.Replace('A_Temp "\macro_switch_debug.log"', 'A_ScriptDir "\debug-init.log"')
 $engine = Read-TestSource 'src/hoenn_engine.ahk'
-$source = (Read-TestSource 'config.ahk') + "`n" + $logger + "`n" + (Read-TestSource 'src/core_actions.ahk') + "`n" + $engine + "`n" + $main + "`n" + $mapping
+$source = (Read-TestSource 'config.ahk') + "`r`n" + $logger + "`r`n" + (Read-TestSource 'src/core_actions.ahk') + "`r`n" + $engine + "`r`n" + $main + "`r`n" + $mapping
 
 # Executar as funções de produção, substituindo apenas fronteiras de I/O e relógio.
 $source = $source.Replace('GetHoenn222BaseTargetMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
@@ -57,15 +59,15 @@ global comboMrMime := 0
 global TestBaseline := $mode
 global TestLoggerInitFailure := $initFailure
 "@
-$tests = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'hoenn-switch-tests.ahk') -Raw
+$tests = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'hoenn-switch-tests.ahk') -Raw -Encoding UTF8
 if ($Baseline) {
     # A versão anterior não recebia o argumento opcional de origem do gatilho.
     $tests = [regex]::Replace($tests, 'Acao_Gatilhos\("[^"]*"\)', 'Acao_Gatilhos()')
     # Não analisar chamadas à nova função de interface ausente no código anterior.
-    $tests = [regex]::Replace($tests, '(?s)RunTests\(\) \{.*?(?=RunBaseline\(\) \{)', "RunTests() {`n}`n")
+    $tests = [regex]::Replace($tests, '(?s)RunTests\(\) \{.*?(?=RunBaseline\(\) \{)', "RunTests() {`r`n}`r`n")
 }
 # Todas as funções são analisadas antes do autoexecute; RunTests encerra o processo.
-$script = "$header`n$source`n$tests"
+$script = [regex]::Replace("$header`r`n$source`r`n$tests", "(?<!`r)`n", "`r`n")
 $scriptPath = Join-Path $testDirectory 'isolated-tests.ahk'
 [IO.File]::WriteAllText($scriptPath, $script, [Text.UTF8Encoding]::new($true))
 $stdout = Join-Path $testDirectory 'stdout.txt'
