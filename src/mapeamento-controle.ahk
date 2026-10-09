@@ -124,6 +124,14 @@ GameLoop() {
         buttons_pressed.Delete("Back")
 
     ; Despachar os botões antes de renderizar; falhas da interface ficam isoladas.
+    ; Um pedido de combo armed é uma ação do modo, não da interface: fica fora
+    ; do bloco de renderização para nunca ser perdido por uma falha de tooltip.
+    try {
+        ProcessarComboArmadoHoenn222()
+    } catch as e {
+        SwitchDebug("SWITCH_ERROR", "phase=combo_armed", e)
+    }
+
     AtualizarTooltipsControle()
 }
 
@@ -169,33 +177,32 @@ AtualizarTooltipsControle(connected := true) {
 ; --- FUNÇÕES DO CRONÔMETRO HOENN 2-2-2 ---
 
 GetHoenn222Tooltip() {
-    global TimeAtual, Hoenn222_State
+    global TimeAtual, Hoenn222_State, Hoenn222_ComboArmed
 
     str := "HOENN 2-2-2 | TIME " TimeAtual "`n`n"
 
     if (Hoenn222_State == "WAITING_FIRST_COMBO") {
         str .= "Aguardando sincronizacao`n(execute 1 combo)`n"
-        return str
-    }
-
-    if (Hoenn222_State == "WAITING_TEAM_SWITCH") {
+    } else if (Hoenn222_State == "WAITING_TEAM_SWITCH") {
         str .= "TROCAR TIME`n`n"
 
         nextTeam := (TimeAtual >= 3) ? 1 : (TimeAtual + 1)
-        str .= "Próx: TIME " nextTeam
-
+        str .= "Próx: TIME " nextTeam "`n"
     } else if (Hoenn222_State == "WAITING_COMBO") {
         str .= "COMBAR`n`n"
+        str .= "Tank: " GetHoenn222TierText(TimeAtual, "tank") "`n"
+        str .= "Sec:  " GetHoenn222TierText(TimeAtual, "second") "`n"
+    }
 
-        refText := (TimeAtual == 1) ? "Lendário" : "UR"
-        str .= "Ref: " refText
+    if (Hoenn222_ComboArmed) {
+        str .= "`nCOMBO ARMADO`n"
     }
 
     return str
 }
 
 GetHoenn222CentralTooltip(&color := unset) {
-    global TimeAtual, Hoenn222_State, Hoenn222_StateStartTick, Hoenn222_DebtMs
+    global Hoenn222_State
 
     color := "FFE033"
     ; Espaço largo mantém o tooltip nativo visível sem letras ou números.
@@ -205,18 +212,16 @@ GetHoenn222CentralTooltip(&color := unset) {
     }
 
     ; O relógio continua interno; a interface mostra somente a cor.
-    elapsedMs := A_TickCount - Hoenn222_StateStartTick
-    idealMs := GetHoenn222BaseTargetMs(Hoenn222_State, TimeAtual) + Hoenn222_DebtMs
-    diffMs := elapsedMs - idealMs
-    color := GetHoenn222CentralColor(diffMs, Hoenn222_State)
+    ; O mesmo cálculo do verde decide o combo antecipado.
+    color := GetHoenn222CentralColor(GetHoenn222PendingMs(), Hoenn222_State)
     return square
 }
 
-GetHoenn222CentralColor(diffMs, state) {
-    if (diffMs >= 0)
+GetHoenn222CentralColor(pendingMs, state) {
+    if (pendingMs <= 0)
         return "33CC66" ; Verde com cerca de 80% de intensidade.
-    if (state == "WAITING_COMBO" && diffMs >= -10000)
-        return "33A3FF" ; Azul nos últimos 10 segundos negativos do tank.
+    if (state == "WAITING_COMBO" && pendingMs <= 10000)
+        return "33A3FF" ; Azul nos últimos 10 segundos de espera do tank.
     return "FFE033" ; Amarelo com cerca de 80% de intensidade por padrão.
 }
 

@@ -1,0 +1,193 @@
+﻿=== PARAMETROS CORRIGIDOS (Prepare 4s) ===
+Prepare=4,0s  Margin=250ms  Latency=250ms  Summon=2.700ms  Gap=800ms
+Volta L = 71,463s
+  Time 1: tank Lendario  CD   40s | sec UR        CD   43s | janela  22,49s | cast tank @+ 4,00s | cast sec @+ 7,50s | ocioso 14,99s | X= 46,98s
+  Time 2: tank UR        CD   43s | sec SR        CD   45s | janela  26,49s | cast tank @+ 4,00s | cast sec @+ 7,50s | ocioso 18,99s | X= 48,98s
+  Time 3: tank SR        CD   45s | sec UR        CD   43s | janela  22,49s | cast tank @+ 4,00s | cast sec @+ 7,50s | ocioso 14,99s | X= 46,98s
+  Limite agregado (N+1)*L >= soma CD + penalidades -> L_min = 68,200s
+
+=== PrepareMs: tempo fisico, nao margem ===
+  Prepare=  2,0s -> L= 69,963s  janelas  21,99  25,99  21,99s  (vs 86,50s observado:   19,1%)
+  Prepare=  3,0s -> L= 70,713s  janelas  22,24  26,24  22,24s  (vs 86,50s observado:   18,3%)
+  Prepare=  4,0s -> L= 71,463s  janelas  22,49  26,49  22,49s  (vs 86,50s observado:   17,4%)
+  Prepare=  6,0s -> L= 72,963s  janelas  22,99  26,99  22,99s  (vs 86,50s observado:   15,7%)
+  Prepare=  8,0s -> L= 74,463s  janelas  23,49  27,49  23,49s  (vs 86,50s observado:   13,9%)
+  Prepare= 12,0s -> L= 77,463s  janelas  24,49  28,49  24,49s  (vs 86,50s observado:   10,4%)
+
+=== As duas margens de 250ms custam quase nada ===
+  Margin=    0ms Latency=   0ms -> L= 70,525s
+  Margin=    0ms Latency= 250ms -> L= 71,088s
+  Margin=    0ms Latency= 500ms -> L= 71,650s
+  Margin=  250ms Latency=   0ms -> L= 70,900s
+  Margin=  250ms Latency= 250ms -> L= 71,463s
+  Margin=  250ms Latency= 500ms -> L= 72,025s
+  Margin=  500ms Latency=   0ms -> L= 71,275s
+  Margin=  500ms Latency= 250ms -> L= 71,838s
+  Margin=  500ms Latency= 500ms -> L= 72,400s
+  Margin=1.000ms Latency=   0ms -> L= 72,025s
+  Margin=1.000ms Latency= 250ms -> L= 72,588s
+  Margin=1.000ms Latency= 500ms -> L= 73,150s
+  Margin=2.000ms Latency=   0ms -> L= 73,525s
+  Margin=2.000ms Latency= 250ms -> L= 74,088s
+  Margin=2.000ms Latency= 500ms -> L= 74,650s
+
+=== Custo da animacao de invocacao (2700ms) ===
+  Summon=    0ms -> L= 69,438s  (cada -1350ms de invocacao vale ~2,03s de volta)
+  Summon=  800ms -> L= 70,038s  (cada -1350ms de invocacao vale ~1,43s de volta)
+  Summon=1.350ms -> L= 70,450s  (cada -1350ms de invocacao vale ~1,01s de volta)
+  Summon=2.700ms -> L= 71,463s  (cada -1350ms de invocacao vale ~0,00s de volta)
+  Summon=4.000ms -> L= 72,438s  (cada -1350ms de invocacao vale ~-0,98s de volta)
+
+=== CENARIO A - execucao conforme o plano (4 voltas) ===
+  Volta resultante = 71,463s (planejada 71,463s)
+   v0 Time 1: comando tank    4,000s (CD no seguro -3.875,0ms PRONTO) | comando sec    7,500s (CD no seguro -4.025,0ms PRONTO)
+   v0 Time 2: comando tank   26,488s (CD no seguro -15.118,8ms PRONTO) | comando sec   29,988s (CD no seguro -15.268,8ms PRONTO)
+   v0 Time 3: comando tank   52,975s (CD no seguro -28.362,5ms PRONTO) | comando sec   56,475s (CD no seguro -28.512,5ms PRONTO)
+   v1 Time 1: comando tank   75,463s (CD no seguro -6.350,0ms PRONTO) | comando sec   78,963s (CD no seguro     0,0ms PRONTO)
+   v1 Time 2: comando tank   97,950s (CD no seguro -5.350,0ms PRONTO) | comando sec  101,450s (CD no seguro     0,0ms PRONTO)
+   v1 Time 3: comando tank  124,438s (CD no seguro -1.350,0ms PRONTO) | comando sec  127,938s (CD no seguro     0,0ms PRONTO)
+   v2 Time 1: comando tank  146,925s (CD no seguro -6.350,0ms PRONTO) | comando sec  150,425s (CD no seguro     0,0ms PRONTO)
+   v2 Time 2: comando tank  169,413s (CD no seguro -5.350,0ms PRONTO) | comando sec  172,913s (CD no seguro     0,0ms PRONTO)
+   v2 Time 3: comando tank  195,900s (CD no seguro -1.350,0ms PRONTO) | comando sec  199,400s (CD no seguro     0,0ms PRONTO)
+   v3 Time 1: comando tank  218,388s (CD no seguro -6.350,0ms PRONTO) | comando sec  221,888s (CD no seguro     0,0ms PRONTO)
+   v3 Time 2: comando tank  240,875s (CD no seguro -5.350,0ms PRONTO) | comando sec  244,375s (CD no seguro     0,0ms PRONTO)
+   v3 Time 3: comando tank  267,363s (CD no seguro -1.350,0ms PRONTO) | comando sec  270,863s (CD no seguro     0,0ms PRONTO)
+  Verificacoes: 12 visitas de dupla x 2 slots = 24 casts (6 Pokemon distintos x 4 voltas)
+  Skills nao prontas no instante do comando: 0 de 24 casts
+  Recuperacao acumulada:
+   L1 tank: fora    88,0s | dentro   147,9s | creditado   161,9s | casts 4
+   U1 sec: fora    61,2s | dentro   174,7s | creditado   148,5s | casts 4
+   U2 tank: fora   104,0s | dentro   158,4s | creditado   183,2s | casts 4
+   R2 sec: fora    77,2s | dentro   185,2s | creditado   169,8s | casts 4
+   R3 tank: fora    88,0s | dentro   196,9s | creditado   186,4s | casts 4
+   U3 sec: fora    61,2s | dentro   223,7s | creditado   173,0s | casts 4
+
+=== CENARIO A2 - macro esperando o primeiro instante seguro ===
+  Volta resultante = 71,463s (planejada 71,463s)
+   v0 Time 1: comando tank    4,000s (CD no seguro -3.875,0ms PRONTO) | comando sec    7,500s (CD no seguro -4.025,0ms PRONTO)
+   v0 Time 2: comando tank   26,488s (CD no seguro -15.118,8ms PRONTO) | comando sec   29,988s (CD no seguro -15.268,8ms PRONTO)
+   v0 Time 3: comando tank   52,975s (CD no seguro -28.362,5ms PRONTO) | comando sec   56,475s (CD no seguro -28.512,5ms PRONTO)
+   v1 Time 1: comando tank   75,463s (CD no seguro -6.350,0ms PRONTO) | comando sec   79,213s (CD no seguro  -250,0ms PRONTO)
+   v1 Time 2: comando tank   97,950s (CD no seguro -5.350,0ms PRONTO) | comando sec  101,700s (CD no seguro  -250,0ms PRONTO)
+   v1 Time 3: comando tank  124,438s (CD no seguro -1.350,0ms PRONTO) | comando sec  128,188s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 1: comando tank  146,925s (CD no seguro -6.350,0ms PRONTO) | comando sec  150,925s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 2: comando tank  169,413s (CD no seguro -5.350,0ms PRONTO) | comando sec  173,413s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 3: comando tank  195,900s (CD no seguro -1.350,0ms PRONTO) | comando sec  199,900s (CD no seguro  -250,0ms PRONTO)
+   v3 Time 1: comando tank  218,388s (CD no seguro -6.350,0ms PRONTO) | comando sec  222,638s (CD no seguro  -250,0ms PRONTO)
+   v3 Time 2: comando tank  240,875s (CD no seguro -5.350,0ms PRONTO) | comando sec  245,125s (CD no seguro  -250,0ms PRONTO)
+   v3 Time 3: comando tank  267,363s (CD no seguro -1.350,0ms PRONTO) | comando sec  271,613s (CD no seguro  -250,0ms PRONTO)
+  Verificacoes: 12 visitas de dupla x 2 slots = 24 casts (6 Pokemon distintos x 4 voltas)
+  Skills nao prontas no instante do comando: 0 de 24 casts
+  Recuperacao acumulada:
+   L1 tank: fora    88,0s | dentro   147,9s | creditado   161,9s | casts 4
+   U1 sec: fora    61,2s | dentro   174,7s | creditado   148,5s | casts 4
+   U2 tank: fora   104,0s | dentro   158,4s | creditado   183,2s | casts 4
+   R2 sec: fora    77,2s | dentro   185,2s | creditado   169,8s | casts 4
+   R3 tank: fora    88,0s | dentro   196,9s | creditado   186,4s | casts 4
+   U3 sec: fora    61,2s | dentro   223,7s | creditado   173,0s | casts 4
+
+=== CENARIO B - cast do tank do Time 1 atrasado 3s, janela mantida ===
+  Volta resultante = 71,463s (planejada 71,463s)
+   v0 Time 1: comando tank    7,000s (CD no seguro -6.875,0ms PRONTO) | comando sec   10,500s (CD no seguro -5.525,0ms PRONTO)  [tank atrasado 3s]
+   v0 Time 2: comando tank   26,488s (CD no seguro -15.118,8ms PRONTO) | comando sec   29,988s (CD no seguro -15.268,8ms PRONTO)
+   v0 Time 3: comando tank   52,975s (CD no seguro -28.362,5ms PRONTO) | comando sec   56,475s (CD no seguro -28.512,5ms PRONTO)
+   v1 Time 1: comando tank   78,463s (CD no seguro -6.350,0ms PRONTO) | comando sec   81,963s (CD no seguro 1.500,0ms *** ATRASADO ***)  [tank atrasado 3s]
+   v1 Time 2: comando tank   97,950s (CD no seguro -5.350,0ms PRONTO) | comando sec  101,450s (CD no seguro     0,0ms PRONTO)
+   v1 Time 3: comando tank  124,438s (CD no seguro -1.350,0ms PRONTO) | comando sec  127,938s (CD no seguro     0,0ms PRONTO)
+   v2 Time 1: comando tank  149,925s (CD no seguro -6.350,0ms PRONTO) | comando sec  153,425s (CD no seguro 1.500,0ms *** ATRASADO ***)  [tank atrasado 3s]
+   v2 Time 2: comando tank  169,413s (CD no seguro -5.350,0ms PRONTO) | comando sec  172,913s (CD no seguro     0,0ms PRONTO)
+   v2 Time 3: comando tank  195,900s (CD no seguro -1.350,0ms PRONTO) | comando sec  199,400s (CD no seguro     0,0ms PRONTO)
+  Verificacoes: 9 visitas de dupla x 2 slots = 18 casts (6 Pokemon distintos x 3 voltas)
+  Skills nao prontas no instante do comando: 2 de 18 casts
+  Recuperacao acumulada:
+   L1 tank: fora    66,0s | dentro    98,7s | creditado   115,3s | casts 3
+   U1 sec: fora    36,9s | dentro   127,8s | creditado   100,8s | casts 3
+   U2 tank: fora    78,0s | dentro   113,2s | creditado   134,6s | casts 3
+   R2 sec: fora    57,9s | dentro   133,3s | creditado   124,5s | casts 3
+   R3 tank: fora    66,0s | dentro   147,7s | creditado   139,8s | casts 3
+   U3 sec: fora    45,9s | dentro   167,8s | creditado   129,8s | casts 3
+
+=== CENARIO B2 - mesmo atraso 3s, com janela replanejada (L=73,71s) ===
+  Volta resultante = 73,713s (planejada 73,713s)
+   v0 Time 1: comando tank   10,000s (CD no seguro -9.875,0ms PRONTO) | comando sec   13,500s (CD no seguro -7.025,0ms PRONTO)  [tank atrasado 3s]
+   v0 Time 2: comando tank   30,238s (CD no seguro -18.493,8ms PRONTO) | comando sec   33,738s (CD no seguro -17.143,8ms PRONTO)
+   v0 Time 3: comando tank   57,475s (CD no seguro -32.112,5ms PRONTO) | comando sec   60,975s (CD no seguro -30.762,5ms PRONTO)
+   v1 Time 1: comando tank   83,713s (CD no seguro -7.850,0ms PRONTO) | comando sec   88,963s (CD no seguro  -250,0ms PRONTO)  [tank atrasado 3s]
+   v1 Time 2: comando tank  103,950s (CD no seguro -6.850,0ms PRONTO) | comando sec  107,700s (CD no seguro  -250,0ms PRONTO)
+   v1 Time 3: comando tank  131,188s (CD no seguro -2.850,0ms PRONTO) | comando sec  134,938s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 1: comando tank  157,425s (CD no seguro -7.850,0ms PRONTO) | comando sec  164,425s (CD no seguro  -250,0ms PRONTO)  [tank atrasado 3s]
+   v2 Time 2: comando tank  177,663s (CD no seguro -6.850,0ms PRONTO) | comando sec  181,663s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 3: comando tank  204,900s (CD no seguro -2.850,0ms PRONTO) | comando sec  208,900s (CD no seguro  -250,0ms PRONTO)
+  Verificacoes: 9 visitas de dupla x 2 slots = 18 casts (6 Pokemon distintos x 3 voltas)
+  Skills nao prontas no instante do comando: 0 de 18 casts
+  Recuperacao acumulada:
+   L1 tank: fora    68,2s | dentro   101,7s | creditado   119,1s | casts 3
+   U1 sec: fora    30,1s | dentro   139,8s | creditado   100,0s | casts 3
+   U2 tank: fora    80,2s | dentro   116,9s | creditado   138,7s | casts 3
+   R2 sec: fora    51,1s | dentro   146,0s | creditado   124,1s | casts 3
+   R3 tank: fora    68,2s | dentro   152,2s | creditado   144,3s | casts 3
+   U3 sec: fora    39,1s | dentro   181,3s | creditado   129,8s | casts 3
+
+=== CENARIO C - troca antecipada 5s no Time 2, macro esperando ficar verde ===
+  Volta resultante = 71,463s (planejada 71,463s)
+   v0 Time 1: comando tank    4,000s (CD no seguro -3.875,0ms PRONTO) | comando sec    7,500s (CD no seguro -4.025,0ms PRONTO)
+   v0 Time 2: comando tank   26,488s (CD no seguro -15.118,8ms PRONTO) | comando sec   29,988s (CD no seguro -15.268,8ms PRONTO)
+   v0 Time 3: comando tank   47,975s (CD no seguro -25.862,5ms PRONTO) | comando sec   51,475s (CD no seguro -26.012,5ms PRONTO)
+   v1 Time 1: comando tank   70,463s (CD no seguro -3.850,0ms PRONTO) | comando sec   76,713s (CD no seguro  -250,0ms PRONTO)
+   v1 Time 2: comando tank   92,950s (CD no seguro  -350,0ms PRONTO) | comando sec  101,700s (CD no seguro  -250,0ms PRONTO)
+   v1 Time 3: comando tank  119,438s (CD no seguro -1.350,0ms PRONTO) | comando sec  123,188s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 1: comando tank  141,925s (CD no seguro -6.350,0ms PRONTO) | comando sec  148,425s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 2: comando tank  164,413s (CD no seguro -5.350,0ms PRONTO) | comando sec  173,413s (CD no seguro  -250,0ms PRONTO)
+   v2 Time 3: comando tank  190,900s (CD no seguro -1.350,0ms PRONTO) | comando sec  194,900s (CD no seguro  -250,0ms PRONTO)
+   v3 Time 1: comando tank  213,388s (CD no seguro -6.350,0ms PRONTO) | comando sec  220,138s (CD no seguro  -250,0ms PRONTO)
+   v3 Time 2: comando tank  235,875s (CD no seguro -5.350,0ms PRONTO) | comando sec  245,125s (CD no seguro  -250,0ms PRONTO)
+   v3 Time 3: comando tank  262,363s (CD no seguro -1.350,0ms PRONTO) | comando sec  266,613s (CD no seguro  -250,0ms PRONTO)
+   v4 Time 1: comando tank  284,850s (CD no seguro -6.350,0ms PRONTO) | comando sec  291,850s (CD no seguro  -250,0ms PRONTO)
+   v4 Time 2: comando tank  307,338s (CD no seguro -5.350,0ms PRONTO) | comando sec  316,838s (CD no seguro  -250,0ms PRONTO)
+   v4 Time 3: comando tank  333,825s (CD no seguro -1.350,0ms PRONTO) | comando sec  338,325s (CD no seguro  -250,0ms PRONTO)
+  Verificacoes: 15 visitas de dupla x 2 slots = 30 casts (6 Pokemon distintos x 5 voltas)
+  Skills nao prontas no instante do comando: 0 de 30 casts
+  Recuperacao acumulada:
+   L1 tank: fora   109,9s | dentro   192,2s | creditado   206,0s | casts 5
+   U1 sec: fora    76,4s | dentro   225,7s | creditado   189,3s | casts 5
+   U2 tank: fora   124,9s | dentro   203,6s | creditado   226,8s | casts 5
+   R2 sec: fora    91,4s | dentro   237,1s | creditado   210,0s | casts 5
+   R3 tank: fora   109,9s | dentro   241,1s | creditado   230,5s | casts 5
+   U3 sec: fora    76,4s | dentro   274,6s | creditado   213,8s | casts 5
+
+=== COMPENSACAO: custo real de um atraso no cast ===
+  atraso  1,0s -> janela Time 1  22,74s (+0,25s), L  72,21s (+0,75s) => se paga  0,25s
+  atraso  2,0s -> janela Time 1  22,99s (+0,50s), L  72,96s (+1,50s) => se paga  0,50s
+  atraso  3,0s -> janela Time 1  23,24s (+0,75s), L  73,71s (+2,25s) => se paga  0,75s
+  atraso  5,0s -> janela Time 1  23,74s (+1,25s), L  75,21s (+3,75s) => se paga  1,25s
+
+=== ANTECIPACAO: sobra de CD abre a janela ===
+  sobra  2,0s -> janela Time 1  21,80s ( 22,49s), L  69,40s ( 71,46s)
+  sobra  4,0s -> janela Time 1  21,30s ( 22,49s), L  67,90s ( 71,46s)
+  sobra  8,0s -> janela Time 1  21,30s ( 22,49s), L  67,90s ( 71,46s)
+
+=== RISCO REAL DE CAST ANTECIPADO ===
+Roda um CD REAL em paralelo (latencia e taxa reais diferentes do modelo) e mede
+quanto de CD real ainda resta no instante em que o macro manda o comando.
+No regime do plano o CD do modelo zera em (comando - Margin), logo:
+  resto real ~= max(0, latencia_real - Latency - Margin) + erro de taxa
+  jogo instantaneo (hipotese)      taxa 1,00x lat    0ms -> OK - nenhum cast antecipado
+  latencia real = assumida         taxa 1,00x lat  250ms -> OK - nenhum cast antecipado
+  latencia real 150ms maior        taxa 1,00x lat  400ms -> OK - nenhum cast antecipado
+  latencia real no limite (+250)   taxa 1,00x lat  500ms -> OK - nenhum cast antecipado
+  latencia real 500ms maior        taxa 1,00x lat  750ms -> CAST ANTECIPADO em 250ms
+  latencia real 750ms maior        taxa 1,00x lat 1.000ms -> CAST ANTECIPADO em 500ms
+  taxa 1% mais lenta               taxa 0,99x lat  250ms -> CAST ANTECIPADO em 202ms
+  taxa 2% mais lenta               taxa 0,98x lat  250ms -> CAST ANTECIPADO em 655ms
+  taxa 1% lenta + lat 150ms        taxa 0,99x lat  400ms -> CAST ANTECIPADO em 350ms
+
+Envelope de tolerancia (Latency 250 + Margin 250 = 500ms):
+  latencia real ate 500ms .... seguro (a margem absorve ate 250ms a mais)
+  latencia real > 500ms ..... cast antecipado de (lat_real - 500)ms
+  taxa ate ~0,8% mais lenta . seguro; acima disso a margem NAO protege
+=== SEM TEMPO SUFICIENTE ===
+  3 duplas todas SR (CD 45s): L=73,46s janela=24,49s | cabe: True
+  3 duplas todas T1 (CD 50s): L=80,96s janela=26,99s | cabe: True
+  Prepare=  20s: L=83,46s janela=26,49s precisa de 23,50s | cabe: True
+  Prepare=  30s: L=90,96s janela=28,99s precisa de 33,50s | cabe: False
+  Prepare=  40s: L=98,46s janela=31,49s precisa de 43,50s | cabe: False

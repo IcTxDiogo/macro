@@ -44,11 +44,11 @@ LogAction(message) {
 global StartComboTick := 0
 global CurrentLogTime := 0
 
-LogComboStart(timeNum, modo) {
+LogComboStart(timeNum, modo, origem := "manual") {
     global StartComboTick, CurrentLogTime
     StartComboTick := A_TickCount
     CurrentLogTime := timeNum
-    LogAction("COMBO START | Modo: " modo " | Time: " timeNum)
+    LogAction("COMBO START | Modo: " modo " | Time: " timeNum " | Origem: " origem)
 }
 
 LogTeamSwitch(newTeam, modo) {
