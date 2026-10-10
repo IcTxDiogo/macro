@@ -1,7 +1,7 @@
-# CLAUDE.md — macro PokeAlliance (AutoHotkey v2)
+﻿# CLAUDE.md — macro PokeAlliance (AutoHotkey v2)
 
 Macro de farm Hoenn **2-2-2**: 3 duplas (time 1, 2, 3), cada uma com um tank e um secundario.
-Fase COMBAR (combo) e fase TROCAR TIME (proxima dupla). Ha UM botao so: ele pede a PROXIMA
+Fase COMBAR (combo) e fase TROCAR TIME (proxima dupla). Ha UM botao so (LB/RB; LT/RT livres): ele pede a PROXIMA
 acao do ciclo; o macro executa na hora (verde), arma e executa no verde, ou trata dois cliques
 como emergencia. Modos: Normal e Hoenn 2-2-2. Idioma do projeto: portugues.
 

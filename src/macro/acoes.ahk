@@ -1,8 +1,8 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Acao de cada botao, conforme o modo. O mapeamento botao -> acao esta em
 ; src\interface\controle.ahk (controle) e main.ahk (mouse); aqui so o que cada um faz.
 
-; BOTAO UNICO do modo 2-2-2: pede a PROXIMA acao do ciclo.
+; BOTAO UNICO do modo 2-2-2 (LB/RB e botao lateral 1 do mouse): pede a PROXIMA acao do ciclo.
 ;   fase COMBAR (ou antes do 1o combo)  -> combo        (PedirCombo)
 ;   fase TROCAR TIME                    -> troca de time (PedirTrocaDeTime)
 ; Cada acao executa na hora se o contador esta verde, arma e executa sozinha no verde se
@@ -30,14 +30,11 @@ AcaoBumpers(origem := "direct") {
     }
 }
 
-; Gatilhos (LT/RT, botao lateral 2 do mouse). Normal: reviver. 2-2-2: proxima acao.
+; Gatilhos (LT/RT, botao lateral 2 do mouse). Normal: reviver. No 2-2-2 estao livres.
 AcaoGatilhos(origem := "direct") {
     try {
-        if (ModoAtual == "Normal") {
+        if (ModoAtual == "Normal")
             Reviver()
-        } else if (ModoAtual == "Hoenn222") {
-            PedirProximaAcao(origem)
-        }
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=trigger_action source=" origem, e)
     }

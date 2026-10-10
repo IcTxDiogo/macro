@@ -81,7 +81,7 @@ duas vezes.
 ### Botão único: a próxima ação do ciclo
 
 No modo 2-2-2 existe **uma ação só**: `PedirProximaAcao()` olha a fase e pede o próximo
-movimento. LB/RB, LT/RT e os dois botões laterais do mouse fazem o mesmo.
+movimento. Os botões são LB/RB e o botão lateral 1 do mouse; LT/RT e o botão lateral 2 ficam livres no 2-2-2.
 
 | Fase | O botão pede | Em espera (amarelo/azul) | Verde | 2 cliques seguidos |
 | --- | --- | --- | --- | --- |

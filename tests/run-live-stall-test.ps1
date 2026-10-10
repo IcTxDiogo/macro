@@ -91,7 +91,7 @@ Run() {
         FaseAtual := "WAITING_TEAM_SWITCH"
         InicioDaFaseTick := A_TickCount - (DuracaoDoTrocarTimeMs(1) - 1500)
         TankJaCastou := Map(1, true, 2, true, 3, true)
-        AcaoGatilhos("controller")
+        AcaoBumpers("controller")
     }
     SetTimer(GameLoop, 30)
     SetTimer(Fim, -10000)

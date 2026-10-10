@@ -111,6 +111,7 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     FaultDebt := false, FaultLogger := false, FaultSend := false, FaultTooltip := false
     WindowAvailable := true, RealInvalidWindow := false
     MockInput.bRightTrigger := 0
+    MockInput.wButtons := 0
     InicioDoComboTick := 0
     ArquivoDoLogDaSessao := A_ScriptDir "\session_logs\test-session.txt"
     DiagnosticoAtivo := true
@@ -302,7 +303,7 @@ RunTests() {
 
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         FaultDebt := true
-        MockInput.bRightTrigger := 255
+        MockInput.wButtons := 0x0200
         GameLoop()
         Assert(Scheduled.Length == 1, "controller scheduled despite tooltip computation error")
         GameLoop()
@@ -312,9 +313,10 @@ RunTests() {
         AssertAcceptedSequence()
         Assert(InStr(DebugText(), "source=controller"), "controller source recorded")
         MockInput.bRightTrigger := 0
+    MockInput.wButtons := 0
         GameLoop()
         MockTick += 1000
-        MockInput.bRightTrigger := 255
+        MockInput.wButtons := 0x0200
         GameLoop()
         Assert(Scheduled.Length == 2, "release and repress schedules next switch")
         ; A 1a troca levou a COMBAR; leva TROCAR TIME verde de novo para a 2a.
@@ -323,17 +325,19 @@ RunTests() {
         Scheduled[2].Call()
         Assert(TimeAtual == 3 && Sent[6] == "{5}", "controller next team despite failing UI")
         MockInput.bRightTrigger := 0
+    MockInput.wButtons := 0
         GameLoop()
         Pass("controller press/hold/release with persistently failing tooltip calculation")
 
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         FaultTooltip := true
-        MockInput.bRightTrigger := 255
+        MockInput.wButtons := 0x0200
         GameLoop()
         Assert(Scheduled.Length == 1, "ToolTip I/O failure still schedules")
         Scheduled[1].Call()
         AssertAcceptedSequence()
         MockInput.bRightTrigger := 0
+    MockInput.wButtons := 0
         GameLoop()
         Pass("ToolTip I/O throws; controller switch preserved")
 
@@ -363,7 +367,7 @@ RunTests() {
         Pass("2-2-2 skill sequence and waits preserved; combo lock never gates manual switch")
 
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
-        AcaoGatilhos("mouse")
+        AcaoBumpers("mouse")
         trace := DebugText()
         lastPosition := 0
         for event in ["NEXT_ACTION", "SWITCH_REQUESTED", "SWITCH_COMMAND_BEGIN", "SWITCH_COMMAND_END", "SWITCH_STATE_UPDATED"] {
@@ -1173,7 +1177,7 @@ RunTests() {
         Pass("AD atraso de saida do secundario: congelamento, tolerancia e plano; tank inalterado (volta " Round(LBaseAD) " -> " Round(planoE.L) ")")
         ; --- BOTAO UNICO: A PROXIMA ACAO DO CICLO ---
         ; Um botao so: na fase COMBAR (ou antes do 1o combo) pede o combo; na fase TROCAR TIME
-        ; pede a troca. LB/RB e LT/RT (e os botoes do mouse) fazem o mesmo no 2-2-2.
+        ; pede a troca. So LB/RB (e o botao lateral 1 do mouse); LT/RT ficam livres no 2-2-2.
 
         ; COMBAR em espera: o pedido vira combo armado, nao troca.
         ResetCase("WAITING_COMBO", 0, 1000)
@@ -1183,7 +1187,7 @@ RunTests() {
         Assert(InStr(DebugText(), "NEXT_ACTION | source=controller phase=WAITING_COMBO action=combo"), "AE diagnostico da proxima acao")
         MockTick += 1000
         AcaoGatilhos("controller")
-        Assert(ComboArmado && !TrocaArmada, "AE LT/RT tambem pede o combo (mesma acao)")
+        Assert(ComboArmado && !TrocaArmada && Sent.Length == 0, "AE LT/RT estao livres no 2-2-2: nao pedem nada")
 
         ; O combo dispara sozinho no verde; durante o rodizio o mesmo botao ja pede a troca.
         MockTick += 60000
@@ -1205,7 +1209,9 @@ RunTests() {
         ; TROCAR TIME verde: troca na hora, com qualquer um dos botoes.
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         AcaoGatilhos("mouse")
-        Assert(TimeAtual == 2 && Sent[1] == "{3}" && !TrocaArmada, "AE em TROCAR TIME verde troca na hora")
+        Assert(TimeAtual == 1 && Sent.Length == 0 && !TrocaArmada, "AE gatilho/botao lateral 2 nao trocam no 2-2-2")
+        AcaoBumpers("mouse")
+        Assert(TimeAtual == 2 && Sent[1] == "{3}" && !TrocaArmada, "AE em TROCAR TIME verde o botao troca na hora")
 
         ; Antes do 1o combo (F8/inicio) o botao pede o combo, que executa na hora.
         ResetCase("WAITING_FIRST_COMBO", 0, 0)
@@ -1220,7 +1226,7 @@ RunTests() {
         Sent := []
         AcaoGatilhos("controller")
         Assert(Join(Sent) == "{Space}", "AE Normal: gatilhos revivem")
-        Pass("AE botao unico: combo em COMBAR, troca em TROCAR TIME, mesmos botoes, Normal inalterado")
+        Pass("AE botao unico: combo em COMBAR, troca em TROCAR TIME, LT/RT livres, Normal inalterado")
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")
     } catch as e {
         FileAppend("FAIL: " e.Message " | " e.What " | line=" e.Line "`n", "*", "UTF-8")
@@ -1266,7 +1272,7 @@ RunBaseline() {
 
         ResetCase("WAITING_COMBO", 0, 2000)
         FaultDebt := true
-        MockInput.bRightTrigger := 255
+        MockInput.wButtons := 0x0200
         caught := false
         try GameLoop()
         catch {

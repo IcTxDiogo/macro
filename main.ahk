@@ -28,5 +28,5 @@ F8:: Resincronizar()
 ; Agendados como no controle: a acao (que pode dormir centenas de ms) roda numa
 ; thread propria e nunca prende a thread do movimento por baixo dela.
 XButton1:: SetTimer(() => AcaoBumpers("mouse"), -1)     ; botao lateral 1: proxima acao
-XButton2:: SetTimer(() => AcaoGatilhos("mouse"), -1)  ; botao lateral 2: proxima acao (revive no Normal)
+XButton2:: SetTimer(() => AcaoGatilhos("mouse"), -1)  ; botao lateral 2: revive no Normal (livre no 2-2-2)
 #HotIf
