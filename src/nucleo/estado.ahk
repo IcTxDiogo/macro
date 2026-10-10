@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Estado global do macro. Somente dados: a logica esta em src\tempo e src\macro.
 ; Nota: neste AutoHotkey ler uma variavel `unset` e erro, entao tudo comeca inicializado.
 
@@ -14,8 +14,6 @@ global FaseAtual := "WAITING_FIRST_COMBO"
 global InicioDaFaseTick := 0
 global IdDaExecucao := 0              ; invalida rodizios agendados quando o F8/troca muda o contexto
 global UltimaTrocaDeTimeTick := 0
-global UltimoComboTick := 0
-global ChamadaDoSecundarioTick := 0
 
 ; --- Pedidos antecipados (armados) ---
 ; Um pedido fica preso ao time em que foi feito e executa sozinho quando o verde acende.
@@ -36,9 +34,3 @@ global PlanoEmCache := false          ; false = ainda nao planejado
 global AvisoDeTierDesconhecidoFeito := false
 global ToleranciaDoSecundarioMs := CalcularToleranciaDoSecundarioMs()
 
-; --- Estatisticas por time (so registro) ---
-global EntradaDoTankTick := Map(1, 0, 2, 0, 3, 0)
-global EntradaDoSecundarioTick := Map(1, 0, 2, 0, 3, 0)
-global DuracaoDoTime := Map(1, 0, 2, 0, 3, 0)
-global IntervaloEntreUsosDoTime := Map(1, 0, 2, 0, 3, 0)
-global UltimoUsoDoTimeTick := Map(1, 0, 2, 0, 3, 0)

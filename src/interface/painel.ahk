@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Painel de texto (tooltip no canto da janela do jogo) e orquestracao da interface.
 ; O quadrado colorido do centro esta em quadrado_central.ahk.
 
@@ -28,7 +28,7 @@ AtualizarInterface(controleConectado := true) {
             } else {
                 DesenharQuadradoCentral()
             }
-            ToolTip(texto, janelaX + 210, janelaY + 30, 1)
+            ToolTip(texto TextoDosProblemasDeConfig(), janelaX + 210, janelaY + 30, 1)
         } else {
             DesenharQuadradoCentral()
         }
@@ -76,5 +76,21 @@ TextoDoPainel() {
         }
     }
 
+    return texto
+}
+
+; Problemas do config.ahk (ver nucleo\validacao_config.ahk), ate 3 linhas, fixos no painel.
+TextoDosProblemasDeConfig() {
+    global ProblemasDeConfig
+    if (ProblemasDeConfig.Length == 0)
+        return ""
+    texto := "`n!! CONFIG !!`n"
+    for problema in ProblemasDeConfig {
+        if (A_Index > 3) {
+            texto .= "... +" (ProblemasDeConfig.Length - 3) " (ver log)`n"
+            break
+        }
+        texto .= problema "`n"
+    }
     return texto
 }

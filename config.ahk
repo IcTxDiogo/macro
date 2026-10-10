@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Configuracao do macro. Tempos em ms. Guia de ajuste: CLAUDE.md; detalhes: docs/tiers-e-combo-hoenn222.md.
 
 ; --- Jogo e entrada ---
@@ -14,8 +14,6 @@ global SleepAfterCombo := 3000        ; depois do combo
 global KeyPokestop := "c"
 global KeyMedicine := "f"
 global KeyCombo := "i"
-global KeyMovePokemon := "q"
-global KeyBall := "v"
 global KeyBallSpecial := "p"
 global KeyRevive := "Space"
 global KeyBuffMove := "f1"
@@ -23,11 +21,8 @@ global KeyPotion := "e"
 global KeyChangeTarget := "Tab"
 global KeyFullDef := "t"
 global KeyFullAtk := "y"
-global KeyPokeMoveF3 := "f3"
-global KeyPokeMoveF6 := "f6"
 
 ; --- Tela ---
-global TileSize := 70
 global PlayerOriginX := 936
 global PlayerOriginY := 402
 global Hoenn222CenterOffsetX := 0     ; quadrado central do indicador
@@ -55,6 +50,11 @@ global Hoenn222_MarginMs := 450       ; folga depois do CD estimado zerar (cada 
 ; Alvos FIXOS de cada fase: usados so com o otimizador desligado ou se ele falhar.
 global Hoenn222_ComboTargetMs := Map(1, 15000, 2, 16000, 3, 15500)    ; COMBAR
 global Hoenn222_SwitchTargetMs := Map(1, 9500, 2, 11500, 3, 11500)    ; TROCAR TIME
+
+; --- Recarregar o macro (Ctrl+Esc / Start) ---
+; Restaura o modelo de cooldown e a fase do ciclo se o estado salvo tiver menos de 3 minutos.
+; F8 continua zerando de proposito. false = todo reload comeca do zero.
+global Hoenn222_RestoreStateOnReload := true
 
 ; --- Hoenn 2-2-2: antecipacao ---
 ; Duas pressoes do mesmo botao dentro desta janela executam na hora (emergencia). 0 desliga.

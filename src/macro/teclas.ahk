@@ -42,10 +42,11 @@ UsarPocao() {
     }
 }
 
+; Recarrega o macro (Ctrl+Esc / Start). Funciona com o jogo fechado: reiniciar nao depende da
+; janela. Salva o modelo antes, para o reload continuar de onde parou.
 ReiniciarMacro() {
-    if WinExist(GameWindow) {
-        Thread "Interrupt"
-        Sleep 200
-        Reload()
-    }
+    SalvarEstado()
+    Thread "Interrupt"
+    Sleep 200
+    Reload()
 }

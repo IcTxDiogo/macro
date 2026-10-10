@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Dois logs independentes:
 ;   - diagnostico (%TEMP%\macro_switch_debug.log): eventos tecnicos; nunca bloqueia um comando;
 ;   - sessao (logs\farm_log_*.txt): combos e trocas de time, para o jogador.
@@ -6,6 +6,17 @@
 global PastaDeLogs := A_ScriptDir "\logs"
 global DiagnosticoAtivo := true
 global ArquivoDiagnostico := A_Temp "\macro_switch_debug.log"
+
+; Diagnostico maior que 5 MB vira .old (substitui o .old anterior): o arquivo nao cresce sem limite.
+RotacionarDiagnosticoSeGrande() {
+    global ArquivoDiagnostico
+    try {
+        if (FileExist(ArquivoDiagnostico) && FileGetSize(ArquivoDiagnostico) > 5 * 1024 * 1024)
+            FileMove(ArquivoDiagnostico, ArquivoDiagnostico ".old", true)
+    } catch {
+    }
+}
+RotacionarDiagnosticoSeGrande()
 
 ; Escreve uma linha no diagnostico. Qualquer falha (arquivo indisponivel, formatacao) e
 ; ignorada: o log nunca pode impedir uma acao do macro.

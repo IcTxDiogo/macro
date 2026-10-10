@@ -8,19 +8,20 @@
 ; A ORDEM importa: estado e cooldown leem o config.ahk ao carregar (main.ahk o inclui antes).
 #Include nucleo\logger.ahk
 #Include nucleo\estado.ahk
+#Include nucleo\validacao_config.ahk
 
 #Include tempo\cooldown.ahk
 #Include tempo\planejador.ahk
 #Include tempo\cronometro.ahk
 
 #Include macro\teclas.ahk
-#Include macro\teclas_inativas.ahk
 #Include macro\troca_time.ahk
 #Include macro\rodizio_222.ahk
 #Include macro\antecipacao.ahk
 #Include macro\antecipacao_combo.ahk
 #Include macro\antecipacao_troca.ahk
 #Include macro\modos.ahk
+#Include macro\persistencia.ahk
 #Include macro\acoes.ahk
 
 #Include interface\quadrado_central.ahk

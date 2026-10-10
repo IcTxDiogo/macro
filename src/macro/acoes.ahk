@@ -44,8 +44,8 @@ AcaoFaceDown() {
     AtivarBuffLure()
 }
 
+; Botao livre no respawn atual.
 AcaoFaceRight() {
-    ; LancarBolasAoRedor() ; Desativado para o respawn atual (Botao Livre!)
 }
 
 AcaoFaceLeft() {

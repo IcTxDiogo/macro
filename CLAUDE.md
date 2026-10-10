@@ -16,6 +16,7 @@ Estrutura, camadas e diagnostico: `docs/estrutura.md`. Historico e decisoes: `do
 | skill comida / folga | `config.ahk`: `Hoenn222_ExitLatencySecondaryMs`, `Hoenn222_LatencyMs`, `Hoenn222_MarginMs` |
 | tempo minimo fora (conforto) | `config.ahk`: `Hoenn222_MinLureMs`, `Hoenn222_MinSecondaryOutMs` |
 | teclas, janela, tela | `config.ahk` |
+| reload sem perder o modelo (ou desligar) | `config.ahk`: `Hoenn222_RestoreStateOnReload` |
 | o que um botao faz (e qual a proxima acao) | `src/macro/acoes.ahk` (`PedirProximaAcao`) |
 | mapeamento botao do controle | `src/interface/controle.ahk` (`DespacharBotoes`) |
 | atalhos de teclado/mouse | `main.ahk` |
@@ -34,7 +35,8 @@ Depois de editar o config: recarregar o macro (Ctrl+Esc ou Start) e F8 para resi
    couber, o macro avisa antes (verde), nunca estende a espera.
 4. **Troca de time nunca fica presa por erro de calculo:** na duvida, troca.
 5. **Nunca subir o `main.ahk` de verdade com o jogo aberto.** Ele le o mesmo gamepad e manda
-   teclas ao jogo (ja contaminou uma gravacao). Validar com os testes e `/validate`.
+   teclas ao jogo (ja contaminou uma gravacao). Ha um mutex que fecha a segunda copia, mas valide
+   com os testes e `/validate`.
 6. **Consertar a causa, nao por margem.** Skill comida = termo errado do modelo. Separar o
    atraso fisico do evento; `MarginMs` e so folga de ruido.
 
@@ -72,7 +74,9 @@ powershell -File tests\run-live-stall-test.ps1                     # timers reai
   `ControlSend`, `Sleep`, `SetTimer`, `WinExist`, `WinActive`, `WinGetPos`, `ToolTip`,
   `XInput_GetState` e `A_TickCount`. **Novo modulo: listar em `src/indice.ahk` E em
   `tests/fontes.ps1`.** Nova chamada de I/O: criar o mock nos runners.
-- Teste novo de comportamento do tempo: `ResetCase()` zera extras e pisos; ligue-os no grupo.
+- Testes por tema: `tests/base.ahk` (mocks, `ResetCase`, `RunTests`) e `tests/grupos/NN-tema.ahk`.
+  Grupo novo: criar a funcao `Testes*` no arquivo do tema e chama-la em `RunTests`.
+- `ResetCase()` zera extras e pisos; ligue-os no grupo que testar.
 
 ## Convencoes e armadilhas do AutoHotkey v2 deste repo
 

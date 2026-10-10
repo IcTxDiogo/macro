@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Troca de time (2-2-2): validacao, envio da tecla, atualizacao do estado e estatisticas.
 
 ; Troca para o proximo time (1 -> 2 -> 3 -> 1). Devolve true se a tecla foi enviada.
@@ -25,7 +25,6 @@ TrocarDeTime() {
         }
         proximoTime := (timeAnterior >= 3) ? 1 : timeAnterior + 1
         teclaDoTime := proximoTime * 2 - 1   ; {1}, {3}, {5}: o tank de cada time
-        trocaAnteriorTick := UltimaTrocaDeTimeTick
 
         ; A janela pode sumir entre a validacao e o ControlSend: tratar os dois casos.
         if !WinExist(GameWindow) {
@@ -53,6 +52,7 @@ TrocarDeTime() {
     } finally {
         Critical(criticoAnterior)
     }
+    SalvarEstado()
 
     ; Sequencia original: uma falha auxiliar nao cancela as acoes seguintes.
     for tecla in [KeyPokestop, KeyFullDef] {
@@ -64,7 +64,6 @@ TrocarDeTime() {
     }
     ; O pedido pendente pertencia ao time que acabou de sair.
     CancelarPedidosArmados("team_switch")
-    RegistrarEstatisticasDaTroca(proximoTime, timeAnterior, trocaTick, trocaAnteriorTick)
     try {
         TextoDeStatus := "Modo: Hoenn 2-2-2 - Time: " TimeAtual
         RegistrarTrocaNoLog(proximoTime, "2-2-2")
@@ -72,19 +71,4 @@ TrocarDeTime() {
         LogDiagnostico("SWITCH_ERROR", "phase=team_logger", e)
     }
     return true
-}
-
-; Estatisticas por time (so registro; nenhum alvo depende delas).
-RegistrarEstatisticasDaTroca(proximoTime, timeAnterior, trocaTick, trocaAnteriorTick) {
-    global DuracaoDoTime, UltimoUsoDoTimeTick, IntervaloEntreUsosDoTime, EntradaDoTankTick
-    try {
-        if (trocaAnteriorTick > 0)
-            DuracaoDoTime[timeAnterior] := trocaTick - trocaAnteriorTick
-        if (UltimoUsoDoTimeTick[proximoTime] > 0)
-            IntervaloEntreUsosDoTime[proximoTime] := trocaTick - UltimoUsoDoTimeTick[proximoTime]
-        UltimoUsoDoTimeTick[proximoTime] := trocaTick
-        EntradaDoTankTick[proximoTime] := trocaTick
-    } catch as e {
-        LogDiagnostico("SWITCH_ERROR", "phase=timer_statistics", e)
-    }
 }

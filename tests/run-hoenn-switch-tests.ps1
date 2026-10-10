@@ -1,6 +1,5 @@
 ﻿param(
     [string]$SourceRoot = (Split-Path -Parent $PSScriptRoot),
-    [switch]$Baseline,
     [switch]$LoggerInitFailure,
     [string]$AutoHotkey = 'C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe'
 )
@@ -49,22 +48,17 @@ $source = $source.Replace('A_TickCount', 'MockTick')
 if ($source -match '\bControlSend\s*\(' -or $source -match '(?m)^#Include\b') {
     throw 'Fonte de teste contém uma fronteira de envio/include não isolada.'
 }
-$mode = if ($Baseline) { 'true' } else { 'false' }
 $initFailure = if ($LoggerInitFailure) { 'true' } else { 'false' }
 $header = @"
 #Requires AutoHotkey v2.0
 global MockTick := 100000
-global TestBaseline := $mode
 global TestLoggerInitFailure := $initFailure
 "@
-$tests = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'hoenn-switch-tests.ahk') -Raw -Encoding UTF8
-if ($Baseline) {
-    # A versão anterior não recebia o argumento opcional de origem do gatilho.
-    $tests = [regex]::Replace($tests, 'AcaoGatilhos\("[^"]*"\)', 'AcaoGatilhos()')
-    # Não analisar chamadas à nova função de interface ausente no código anterior.
-    $tests = [regex]::Replace($tests, '(?s)RunTests\(\) \{.*?(?=RunBaseline\(\) \{)', "RunTests() {`r`n}`r`n")
-}
-# Todas as funções são analisadas antes do autoexecute; RunTests encerra o processo.
+# Mocks e auxiliares (base.ahk) + um arquivo por tema, na ordem do nome (NN-tema.ahk).
+$tests = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'base.ahk') -Raw -Encoding UTF8)
+foreach ($grupo in Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'grupos') -Filter '*.ahk' | Sort-Object Name) {
+    $tests += "`n" + (Get-Content -LiteralPath $grupo.FullName -Raw -Encoding UTF8)
+}# Todas as funções são analisadas antes do autoexecute; RunTests encerra o processo.
 $script = [regex]::Replace("$header`r`n$source`r`n$tests", "(?<!`r)`n", "`r`n")
 $scriptPath = Join-Path $testDirectory 'isolated-tests.ahk'
 [IO.File]::WriteAllText($scriptPath, $script, [Text.UTF8Encoding]::new($true))

@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Rodizio do modo Hoenn 2-2-2: cada time e um tank + um secundario, com cooldown por Pokemon.
 ; QUANDO liberar vem de src\tempo; aqui so a sequencia de teclas e o registro no cooldown.
 
@@ -33,8 +33,7 @@ IniciarRodizio222(origem := "manual") {
 ; intervalos (SleepAfter*) sao animacao do jogo e nunca sao alterados pelo otimizador.
 ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, origem := "manual") {
     global RodizioAtivo, TimeAtual, ModoAtual, GameWindow
-    global FaseAtual, InicioDaFaseTick, UltimoComboTick, ChamadaDoSecundarioTick
-    global EntradaDoSecundarioTick, IdDaExecucao
+    global FaseAtual, InicioDaFaseTick, IdDaExecucao
 
     ; Invalidado por F8, troca de time ou de modo entre o agendamento e a execucao.
     if (timeDoRodizio != TimeAtual || ModoAtual != "Hoenn222" || idDoRodizio != IdDaExecucao) {
@@ -43,12 +42,9 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
     }
 
     IdDaExecucao++
-    minhaExecucao := IdDaExecucao
 
     FaseAtual := "WAITING_TEAM_SWITCH"
     InicioDaFaseTick := A_TickCount
-    UltimoComboTick := A_TickCount
-    ChamadaDoSecundarioTick := 0
 
     RegistrarInicioDoCombo(timeDoRodizio, "2-2-2", origem)
 
@@ -56,19 +52,17 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
         ; O registro do cast vem antes do envio: se o ControlSend falhar, o CD fica carregado
         ; (lado conservador). Contagem e envio nunca divergem.
         RegistrarCast(timeDoRodizio)
+        SalvarEstado()
         ComboSimples()
         Sleep(SleepAfterTankCombo)
 
         if (timeDoRodizio != TimeAtual || ModoAtual != "Hoenn222")
             return
 
-        if (IdDaExecucao == minhaExecucao) {
-            ChamadaDoSecundarioTick := A_TickCount
-            EntradaDoSecundarioTick[timeDoRodizio] := A_TickCount
-        }
 
         ControlSend("{" teclaDoSecundario "}", , GameWindow)
         RegistrarChamadaDoSecundario(timeDoRodizio)
+        SalvarEstado()
         ; Se o CD do secundario nao couber aqui, o macro nao estende a espera: o verde do
         ; combo ja avisou antes.
         Sleep(SleepAfterSwitch)
@@ -78,6 +72,7 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
             return
 
         RegistrarCast(timeDoRodizio, true)
+        SalvarEstado()
         ComboSimples()
         Sleep(SleepAfterCombo)
     } finally {

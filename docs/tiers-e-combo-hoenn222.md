@@ -271,7 +271,7 @@ validação de time.
 
 **44 grupos PASS** (**45** com `DirCreate` falhando) mais o teste de congelamento
 demais (H–AD: CD individual, plano, 1ª volta, pisos, atraso de saída) estão em
-`tests/hoenn-switch-tests.ahk`.
+`tests/grupos/` (um arquivo por tema).
 
 | Grupo | Cenário | Resultado |
 | --- | --- | --- |
