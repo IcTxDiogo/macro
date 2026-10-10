@@ -1,12 +1,10 @@
 #Requires AutoHotkey v2.0
 ; Gatilho de troca de time 2-2-2: normal, antecipado (armado) e emergencia.
 
-; Clique no gatilho (LT/RT ou botao lateral 2 do mouse). O verde e o da fase TROCAR TIME.
+; Pedido de troca de time (chamado por PedirProximaAcao na fase TROCAR TIME).
 ;   TROCAR TIME verde                 -> troca na hora.
 ;   TROCAR TIME amarelo               -> arma; troca sozinho no verde.
-;   COMBAR (combo ainda nao feito)    -> arma; so troca depois do combo e do verde da troca.
-;   2o clique dentro da janela        -> emergencia: troca na hora, em qualquer fase.
-;   Aguardando sincronizacao          -> troca na hora (nao existe ciclo para esperar).
+;   2o clique dentro da janela        -> emergencia: troca na hora.
 ; Falha de calculo nunca prende a troca: vale o comportamento antigo (trocar).
 PedirTrocaDeTime(origem := "direct") {
     global TimeAtual, FaseAtual, Hoenn222_EmergencyWindowMs
@@ -17,19 +15,14 @@ PedirTrocaDeTime(origem := "direct") {
     UltimoCliqueTrocaTick := cliqueTick
     emergencia := (intervaloMs >= 0 && intervaloMs <= Hoenn222_EmergencyWindowMs)
 
-    fase := FaseAtual
     faltaMs := 0
-    if (fase == "WAITING_TEAM_SWITCH") {
-        try {
-            faltaMs := FaltaParaVerdeMs()
-        } catch as e {
-            LogDiagnostico("SWITCH_ERROR", "phase=switch_readiness", e)
-        }
-    } else if (fase == "WAITING_COMBO") {
-        ; O proximo movimento desta dupla ainda e o combo: nao ha verde de troca.
-        faltaMs := 1
+    try {
+        faltaMs := FaltaParaVerdeMs()
+    } catch as e {
+        LogDiagnostico("SWITCH_ERROR", "phase=switch_readiness", e)
     }
-    faltaTexto := (fase == "WAITING_COMBO") ? "combo_first" : Round(faltaMs)
+    fase := FaseAtual
+    faltaTexto := Round(faltaMs)
 
     LogDiagnostico("SWITCH_REQUEST", "source=" origem " team=" TimeAtual " state=" fase
         " gap_ms=" intervaloMs " missing_ms=" faltaTexto
@@ -70,7 +63,7 @@ ExecutarTrocaDeTime(origem := "direct", timeEsperado := 0) {
         LogDiagnostico("SWITCH_REJECTED", "reason=armed_context_changed expected=" timeEsperado " current=" TimeAtual)
         return
     }
-    if (TrocarDeTime(3)) {
+    if (TrocarDeTime()) {
         Sleep(SleepAfterSwitch)
         ControlSend("{" KeyPokestop "}", , GameWindow)
         UsarPocao()

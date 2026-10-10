@@ -74,7 +74,6 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     global
     TimeAtual := 1
     RodizioAtivo := false
-    TankDoTime2Modo33 := 4
     ModoAtual := "Hoenn222"
     FaseAtual := state
     InicioDaFaseTick := MockTick - elapsed
@@ -162,13 +161,13 @@ RunTests() {
             Pass("real DirCreate failure does not abort application initialization")
         }
         ResetCase()
-        Assert(TrocarDeTime(3), "A first switch accepted")
+        Assert(TrocarDeTime(), "A first switch accepted")
         Assert(TimeAtual == 2 && Sent[1] == "{3}", "A team2/key3")
         MockTick += 1000
-        Assert(TrocarDeTime(3), "A second switch accepted at exactly 1000ms")
+        Assert(TrocarDeTime(), "A second switch accepted at exactly 1000ms")
         Assert(TimeAtual == 3 && Sent[4] == "{5}", "A team3/key5")
         MockTick += 1000
-        Assert(TrocarDeTime(3), "A wrap accepted")
+        Assert(TrocarDeTime(), "A wrap accepted")
         Assert(TimeAtual == 1 && Sent[7] == "{1}", "A team1/key1")
         Pass("A normal cycle 1 -> 2 -> 3 -> 1")
 
@@ -178,7 +177,7 @@ RunTests() {
         UltimoUsoDoTimeTick[2] := MockTick - 50000
         AplicarCast(1, false, MockTick - 34000)
         AplicarCast(1, true, MockTick - 30500)
-        AcaoGatilhos("mouse")
+        PedirTrocaDeTime("mouse")
         AssertAcceptedSequence()
         Assert(DuracaoDoTime[1] == 4000 && IntervaloEntreUsosDoTime[2] == 50000, "B tracking")
         Assert(EntradaDoTankTick[2] == MockTick, "B tank timestamp")
@@ -196,7 +195,7 @@ RunTests() {
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         AplicarCast(1, false, MockTick - 4000)
         AplicarCast(1, true, MockTick - 500)
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         AssertAcceptedSequence()
         MockTick += 60000
         Assert(CdOf(SlotDoPokemon(2, false)) == 0, "C CD chega a zero e trava em zero")
@@ -217,22 +216,22 @@ RunTests() {
         Pass("C acumulador individual, saturacao em zero e primeiro instante seguro")
 
         ResetCase("WAITING_TEAM_SWITCH", 0, 5000)
-        Assert(TrocarDeTime(3), "D state does not block")
+        Assert(TrocarDeTime(), "D state does not block")
         Assert(FaseAtual == "WAITING_COMBO" && InicioDaFaseTick == MockTick, "D state timestamp")
         Pass("D WAITING_TEAM_SWITCH")
 
         ResetCase("WAITING_COMBO", 0, 2000)
         UltimaTrocaDeTimeTick := MockTick - 1000
-        Assert(TrocarDeTime(3), "E WAITING_COMBO accepted after debounce")
+        Assert(TrocarDeTime(), "E WAITING_COMBO accepted after debounce")
         Pass("E WAITING_COMBO, only 1000ms debounce")
 
         ResetCase()
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         ; Com TROCAR TIME verde a segunda pressao chega ate o debounce de 1000 ms.
         FaseAtual := "WAITING_TEAM_SWITCH"
         InicioDaFaseTick := MockTick - 40000
         MockTick += 999
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         Assert(Sent.Length == 5 && TimeAtual == 2, "F no commands or advance on duplicate")
         Assert(InStr(DebugText(), "reason=debounce elapsed_ms=999"), "F rejection reason")
         Assert(!A_IsCritical, "F restores thread interruptibility")
@@ -240,7 +239,7 @@ RunTests() {
 
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         FaultDebt := true
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         AssertAcceptedSequence()
         Assert(FaseAtual == "WAITING_COMBO", "G state preserved")
         ; O calculo do verde falhou: a troca NUNCA fica presa por isso, vale o comportamento antigo.
@@ -249,12 +248,12 @@ RunTests() {
 
         ResetCase()
         FaultLogger := true
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         AssertAcceptedSequence()
         Assert(InStr(DebugText(), "phase=team_logger"), "H caller isolates logger exception")
         ResetCase()
         ArquivoDoLogDaSessao := A_ScriptDir "\nonexistent\log.txt"
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         AssertAcceptedSequence()
         Assert(InStr(DebugText(), "phase=session_logger"), "H real FileAppend failure isolated")
         Pass("H thrown logger and real session FileAppend failure")
@@ -267,26 +266,26 @@ RunTests() {
         Assert(FaseAtual == "WAITING_FIRST_COMBO", "I F8 reset")
         Assert(IdDaExecucao == 1 && UltimoComboTick == 0 && ChamadaDoSecundarioTick == 0, "I invalidation")
         Assert(CdOf(1) == 0 && CdRateOf(1) == 0.5, "I F8 zera os cooldowns e deixa tudo na Ball")
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         AssertAcceptedSequence()
         MockTick += 500
         Resincronizar()
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         Assert(TimeAtual == 2 && Sent.Length == 5, "I F8 does not bypass debounce")
         MockTick += 500
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         Assert(TimeAtual == 3 && Sent[6] == "{5}", "I accepts at 1000ms after F8")
         Pass("I F8 resync followed by switch")
 
         ResetCase("WAITING_TEAM_SWITCH", 500, 40000)
         WindowAvailable := false
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         Assert(Sent.Length == 0 && TimeAtual == 1 && UltimaTrocaDeTimeTick == 0, "J no-window keeps state")
         Assert(InStr(DebugText(), "reason=no_window") && !InStr(DebugText(), "SWITCH_STATE_UPDATED"), "J no false success")
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         AplicarCast(1, false, MockTick - 1000)
         RealInvalidWindow := true
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         Assert(Sent.Length == 0 && TimeAtual == 1, "J real failed ControlSend keeps state")
         Assert(CdRateOf(1) == 1.0, "J falha no envio nao move ninguem para fora da Ball")
         Assert(InStr(DebugText(), "result=failed") && InStr(DebugText(), "reason=send_failed") && !InStr(DebugText(), "requested_only"), "J real TargetError diagnosed")
@@ -297,7 +296,7 @@ RunTests() {
         ArquivoDiagnostico := A_ScriptDir "\nonexistent\debug.log"
         FaultDebt := true
         FaultLogger := true
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         AssertAcceptedSequence()
         Pass("debug writer unavailable with simultaneous debt/logger failures")
 
@@ -348,19 +347,6 @@ RunTests() {
         Assert(SleepAfterTankCombo == 2700 && SleepAfterCombo == 3000 && SleepAfterSwitch == 800, "sleep constants")
         Pass("two tooltip IDs/positions, no visible timers, no frame logs, fixed sleeps")
 
-        ResetCase()
-        ModoAtual := "Hoenn33"
-        AcaoGatilhos()
-        Assert(Join(Sent) == "{4}|{c}|{t}|{c}|{e}" && TimeAtual == 2, "3-3 tank4")
-        AcaoGatilhos()
-        Assert(TimeAtual == 1 && Sent[6] == "{1}", "3-3 no added debounce")
-        TankDoTime2Modo33 := 5
-        AcaoGatilhos()
-        Assert(TimeAtual == 2 && Sent[11] == "{5}", "3-3 tank5 optimization")
-        TimeAtual := 3
-        AcaoGatilhos()
-        Assert(TimeAtual == 1 && Sent[16] == "{1}", "mode transition from team3")
-        Pass("3-3 cycle, alternating tank, original commands, no added debounce")
 
         ResetCase()
         IniciarRodizio222()
@@ -371,16 +357,16 @@ RunTests() {
         Assert(!RodizioAtivo, "combo lock released")
         RodizioAtivo := true
         InicioDaFaseTick := MockTick - 40000
-        AcaoGatilhos()
+        PedirTrocaDeTime()
         Assert(TimeAtual == 2 && Sent[10] == "{3}", "switch independent of combo lock")
         RodizioAtivo := false
         Pass("2-2-2 skill sequence and waits preserved; combo lock never gates manual switch")
 
-        ResetCase()
+        ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
         AcaoGatilhos("mouse")
         trace := DebugText()
         lastPosition := 0
-        for event in ["TRIGGER_RECEIVED", "SWITCH_REQUESTED", "SWITCH_COMMAND_BEGIN", "SWITCH_COMMAND_END", "SWITCH_STATE_UPDATED"] {
+        for event in ["NEXT_ACTION", "SWITCH_REQUESTED", "SWITCH_COMMAND_BEGIN", "SWITCH_COMMAND_END", "SWITCH_STATE_UPDATED"] {
             position := InStr(trace, event)
             Assert(position > lastPosition, "diagnostic event order: " event)
             lastPosition := position
@@ -491,7 +477,7 @@ RunTests() {
         AplicarCast(1, true, MockTick)
         PedirCombo()
         Assert(ComboArmado, "D the press armed")
-        Assert(TrocarDeTime(3), "D switch accepted")
+        Assert(TrocarDeTime(), "D switch accepted")
         Assert(TimeAtual == 2 && !ComboArmado && TimeDoComboArmado == 0, "D switch disarms")
         Assert(Sent.Length == 3 && InStr(DebugText(), "reason=team_switch"), "D only the switch keys were sent")
         MockTick += 60000
@@ -822,7 +808,7 @@ RunTests() {
         ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
         janelaP := DuracaoDoTrocarTimeMs(1)
         Assert(FaltaParaVerdeMs() == janelaP - 3000 && janelaP > 3000, "P cenario: TROCAR TIME amarelo")
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         Assert(TrocaArmada && TimeDaTrocaArmada == 1, "P gatilho em amarelo arma a troca")
         Assert(Sent.Length == 0 && TimeAtual == 1, "P nada enviado e o time nao mudou")
         corP := ""
@@ -849,17 +835,17 @@ RunTests() {
 
         ; TROCAR TIME verde: troca na hora, sem armar.
         ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
-        AcaoGatilhos("mouse")
+        PedirTrocaDeTime("mouse")
         AssertAcceptedSequence()
         Assert(!TrocaArmada && InStr(DebugText(), "result=immediate"), "Q verde troca na hora")
         Pass("Q gatilho em verde troca na hora")
 
         ; Duplo acionamento em amarelo: emergencia, troca na hora e consome o pedido.
         ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         Assert(TrocaArmada && Sent.Length == 0, "R primeira pressao arma")
         MockTick += Hoenn222_EmergencyWindowMs
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         AssertAcceptedSequence()
         Assert(!TrocaArmada && InStr(DebugText(), "result=emergency"), "R segunda pressao troca na hora e limpa o pedido")
         MockTick += 60000
@@ -869,67 +855,33 @@ RunTests() {
         savedWindow := Hoenn222_EmergencyWindowMs
         Hoenn222_EmergencyWindowMs := 0
         ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         MockTick += 1
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         Assert(Sent.Length == 0 && TrocaArmada, "R janela 0 desliga a emergencia")
         Hoenn222_EmergencyWindowMs := savedWindow
         Pass("R duplo acionamento troca na hora; janela 0 desliga")
 
-        ; Ainda na fase do combo: a troca fica armada e so sai depois do combo e do verde.
-        ResetCase("WAITING_COMBO", 0, 1000)
-        AplicarCast(1, true, MockTick)
-        AcaoGatilhos("controller")
-        Assert(TrocaArmada && Sent.Length == 0 && TimeAtual == 1, "S em COMBAR o gatilho arma, nao troca")
-        MockTick += 60000
-        GameLoop()
-        Assert(Scheduled.Length == 0 && TrocaArmada, "S sem combo feito nao troca, mesmo com o tempo passando")
-        ; O combo desta dupla acontece; o pedido de troca sobrevive a ele.
-        IniciarRodizio222()
-        Assert(TrocaArmada, "S o combo nao consome o pedido de troca")
-        Scheduled[1].Call()
-        Assert(FaseAtual == "WAITING_TEAM_SWITCH" && TrocaArmada, "S depois do combo espera o verde de TROCAR TIME")
-        GameLoop()
-        Assert(Scheduled.Length == 1, "S ainda amarelo: nao agenda troca")
-        MockTick += DuracaoDoTrocarTimeMs(1) + 1
-        GameLoop()
-        Assert(Scheduled.Length == 2 && TrocaArmada, "S no verde de TROCAR TIME a troca e agendada")
-        Scheduled[2].Call()
-        Assert(!TrocaArmada && TimeAtual == 2, "S a thread descartavel faz a troca")
-        Pass("S gatilho em COMBAR espera o combo e depois o verde da troca")
 
         ; Troca armada nunca vale para outro time, modo ou apos F8.
         ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         Assert(TrocaArmada, "T armada")
         Resincronizar()
         Assert(!TrocaArmada && InStr(DebugText(), "SWITCH_DISARMED"), "T F8 desarma")
         ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         TrocarModo()
         Assert(!TrocaArmada, "T troca de modo desarma")
         ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
-        AcaoGatilhos("controller")
+        PedirTrocaDeTime("controller")
         TimeAtual := 2
         MockTick += 60000
         GameLoop()
         Assert(!TrocaArmada && Scheduled.Length == 0 && Sent.Length == 0, "T time diferente: nao troca em outro time")
         Pass("T troca armada e cancelada por F8, modo e mudanca de time")
 
-        ; Combo armado e troca armada coexistem sem se consumir.
-        ResetCase("WAITING_COMBO", 0, 1000)
-        AplicarCast(1, true, MockTick)
-        PedirCombo()
-        AcaoGatilhos("controller")
-        Assert(ComboArmado && TrocaArmada, "U combo e troca armados ao mesmo tempo")
-        Pass("U combo armado e troca armada sao independentes")
 
-        ; Modo 3-3 e Normal nao mudam.
-        ResetCase("WAITING_TEAM_SWITCH", 0, 3000)
-        ModoAtual := "Hoenn33"
-        AcaoGatilhos("controller")
-        Assert(!TrocaArmada && TimeAtual == 2, "V modo 3-3 troca na hora como sempre")
-        Pass("V modos 3-3 e Normal inalterados")
 ; --- PRIMEIRA VOLTA: O RITMO DO PLANO VALE DESDE O PRIMEIRO CICLO ---
         ; Depois do F8 os seis estao com o CD pronto. Sem ritmo, a troca para o time
         ; 2 liberava o combo na hora (CD zero) e a espera inteira caia na volta do
@@ -1010,7 +962,7 @@ RunTests() {
             }
             if (FaseAtual == "WAITING_TEAM_SWITCH" && FaltaParaVerdeMs() <= 0) {
                 eventos.Push("t=" Round((MockTick - 100000) / 1000, 1) " TROCA do time " TimeAtual)
-                TrocarDeTime(3)
+                TrocarDeTime()
             }
             MockTick += 10
         }
@@ -1073,7 +1025,7 @@ RunTests() {
                 c2Z := 0
             }
             if (FaseAtual == "WAITING_TEAM_SWITCH" && FaltaParaVerdeMs() <= 0)
-                TrocarDeTime(3)
+                TrocarDeTime()
             MockTick += 10
         }
         Assert(voltaZ >= 4, "Z simulou voltas suficientes: " voltaZ)
@@ -1164,7 +1116,7 @@ RunTests() {
             }
             if (FaseAtual == "WAITING_TEAM_SWITCH" && FaltaParaVerdeMs() <= 0) {
                 trocaS := MockTick
-                TrocarDeTime(3)
+                TrocarDeTime()
             }
             MockTick += 10
         }
@@ -1219,6 +1171,56 @@ RunTests() {
             Assert(recT >= CooldownBaseMs(k, false) + Hoenn222_MarginMs - 0.5, "AD tank " k " recupera CD + margem base: " Round(recT))
         }
         Pass("AD atraso de saida do secundario: congelamento, tolerancia e plano; tank inalterado (volta " Round(LBaseAD) " -> " Round(planoE.L) ")")
+        ; --- BOTAO UNICO: A PROXIMA ACAO DO CICLO ---
+        ; Um botao so: na fase COMBAR (ou antes do 1o combo) pede o combo; na fase TROCAR TIME
+        ; pede a troca. LB/RB e LT/RT (e os botoes do mouse) fazem o mesmo no 2-2-2.
+
+        ; COMBAR em espera: o pedido vira combo armado, nao troca.
+        ResetCase("WAITING_COMBO", 0, 1000)
+        AplicarCast(1, true, MockTick)
+        AcaoBumpers("controller")
+        Assert(ComboArmado && !TrocaArmada && Sent.Length == 0 && TimeAtual == 1, "AE em COMBAR o botao arma o combo")
+        Assert(InStr(DebugText(), "NEXT_ACTION | source=controller phase=WAITING_COMBO action=combo"), "AE diagnostico da proxima acao")
+        MockTick += 1000
+        AcaoGatilhos("controller")
+        Assert(ComboArmado && !TrocaArmada, "AE LT/RT tambem pede o combo (mesma acao)")
+
+        ; O combo dispara sozinho no verde; durante o rodizio o mesmo botao ja pede a troca.
+        MockTick += 60000
+        GameLoop()
+        Assert(Scheduled.Length == 1, "AE no verde o combo e agendado")
+        Scheduled[1].Call()
+        Assert(Scheduled.Length == 2 && RodizioAtivo, "AE a thread descartavel inicia o rodizio")
+        Scheduled[2].Call()
+        Assert(FaseAtual == "WAITING_TEAM_SWITCH" && !ComboArmado, "AE depois do combo a fase e TROCAR TIME")
+        Sent := []
+        AcaoBumpers("controller")
+        Assert(TrocaArmada && !ComboArmado && Sent.Length == 0, "AE em TROCAR TIME em espera o botao arma a troca")
+        MockTick += DuracaoDoTrocarTimeMs(1) + 1
+        GameLoop()
+        Assert(Scheduled.Length == 3, "AE no verde da troca ela e agendada")
+        Scheduled[3].Call()
+        Assert(TimeAtual == 2 && !TrocaArmada, "AE o botao unico completou combo e troca")
+
+        ; TROCAR TIME verde: troca na hora, com qualquer um dos botoes.
+        ResetCase("WAITING_TEAM_SWITCH", 0, 40000)
+        AcaoGatilhos("mouse")
+        Assert(TimeAtual == 2 && Sent[1] == "{3}" && !TrocaArmada, "AE em TROCAR TIME verde troca na hora")
+
+        ; Antes do 1o combo (F8/inicio) o botao pede o combo, que executa na hora.
+        ResetCase("WAITING_FIRST_COMBO", 0, 0)
+        AcaoBumpers("mouse")
+        Assert(Scheduled.Length == 1 && TimeAtual == 1 && !TrocaArmada, "AE antes do 1o combo o botao pede o combo")
+
+        ; Modo Normal nao muda: bumpers = combo simples, gatilhos = reviver.
+        ResetCase()
+        ModoAtual := "Normal"
+        AcaoBumpers("controller")
+        Assert(Join(Sent) == "{y}|{c}|{f}|{i}", "AE Normal: bumpers fazem o combo simples")
+        Sent := []
+        AcaoGatilhos("controller")
+        Assert(Join(Sent) == "{Space}", "AE Normal: gatilhos revivem")
+        Pass("AE botao unico: combo em COMBAR, troca em TROCAR TIME, mesmos botoes, Normal inalterado")
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")
     } catch as e {
         FileAppend("FAIL: " e.Message " | " e.What " | line=" e.Line "`n", "*", "UTF-8")
@@ -1231,7 +1233,7 @@ RunBaseline() {
         ResetCase()
         FaultLogger := true
         caught := false
-        try TrocarDeTime(3)
+        try TrocarDeTime()
         catch as e {
             caught := true
             Assert(e.Message == "simulated logger failure", "baseline logger exception")
@@ -1242,7 +1244,7 @@ RunBaseline() {
         ResetCase()
         ArquivoDoLogDaSessao := A_ScriptDir "\nonexistent\session.log"
         caught := false
-        try AcaoGatilhos()
+        try PedirTrocaDeTime()
         catch as e {
             caught := true
             Assert(e.What == "FileAppend", "baseline real logger I/O error source")
@@ -1253,7 +1255,7 @@ RunBaseline() {
         ResetCase("WAITING_COMBO", 1234, 2000)
         FaultDebt := true
         caught := false
-        try TrocarDeTime(3)
+        try TrocarDeTime()
         catch as e {
             caught := true
             Assert(e.Message == "simulated AlvoDaFaseMs failure", "baseline debt exception")

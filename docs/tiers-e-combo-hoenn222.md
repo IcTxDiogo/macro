@@ -33,7 +33,7 @@ otimizador lançar exceção, o macro volta a eles em vez de travar.
 
 ## 2. Botão de combo: normal, antecipado e emergência
 
-`AcaoBumpers()` chama `PedirCombo()` no modo 2-2-2. Ela classifica
+`PedirCombo()` (chamado por `PedirProximaAcao()` na fase COMBAR) classifica
 a pressão e age em uma das três saídas:
 
 | Caso | Entrada | Resultado |
@@ -58,31 +58,41 @@ pedido: ela consome e executa. Fora dela, o comportamento é o da primeira
 pressão. `Hoenn222_EmergencyWindowMs := 0` desliga a emergência e mantém só o
 pedido antecipado.
 
-### Gatilho de troca de time (LT/RT e XButton2)
+### Troca de time: o mesmo pedido, na fase TROCAR TIME
 
-A mesma regra vale para o outro movimento do ciclo, a troca para o próximo time.
-`AcaoGatilhos()` chama `PedirTrocaDeTime()`; o verde é o do estado
-`TROCAR TIME`, lido do mesmo `FaltaParaVerdeMs()`.
+A troca para o próximo time segue a mesma regra do combo. `PedirTrocaDeTime()` usa o verde da
+fase `TROCAR TIME`, lido do mesmo `FaltaParaVerdeMs()`.
 
 | Fase | Pressão | Resultado |
 | --- | --- | --- |
 | `TROCAR TIME` verde | 1ª | troca na hora |
 | `TROCAR TIME` amarelo | 1ª | `TROCA ARMADA`; troca sozinha no instante do verde |
-| `COMBAR` (combo ainda não feito) | 1ª | armada; só sai depois do combo desta dupla e do verde da troca |
-| qualquer fase | 2ª dentro de `Hoenn222_EmergencyWindowMs` | emergência: troca na hora e consome o pedido |
-| `Aguardando sincronização` | 1ª | troca na hora |
+| `TROCAR TIME` | 2ª dentro de `Hoenn222_EmergencyWindowMs` | emergência: troca na hora e consome o pedido |
 
-O pedido de troca é independente do pedido de combo (os dois podem estar
-armados), fica preso ao time em que foi feito e é cancelado por F8, troca de modo
-e mudança de time. Diagnóstico: `SWITCH_REQUEST`, `SWITCH_ARMED`, `SWITCH_FIRED`,
-`SWITCH_DISARMED`, `SWITCH_RESULT`.
+O pedido de troca fica preso ao time em que foi feito e é cancelado por F8, troca de modo e
+mudança de time. Diagnóstico: `SWITCH_REQUEST`, `SWITCH_ARMED`, `SWITCH_FIRED`,
+`SWITCH_DISARMED`, `SWITCH_RESULT`. O cálculo do verde nunca prende a troca: se ele lançar
+exceção, vale o comportamento antigo (troca na hora) e o erro vai para `phase=switch_readiness`.
 
-O cálculo do verde nunca prende a troca: se ele lançar exceção, vale o
-comportamento antigo (troca na hora) e o erro vai para `phase=switch_readiness`.
+O alvo de `TROCAR TIME` é `janela − lure` do plano, medido a partir do cast. A janela do plano
+começa na troca de time e o lure acontece antes do cast; usar a janela inteira contava o lure
+duas vezes.
 
-O alvo de `TROCAR TIME` é `janela − lure` do plano, medido a partir do cast. A
-janela do plano começa na troca de time e o lure acontece antes do cast; usar a
-janela inteira contava o lure duas vezes.
+### Botão único: a próxima ação do ciclo
+
+No modo 2-2-2 existe **uma ação só**: `PedirProximaAcao()` olha a fase e pede o próximo
+movimento. LB/RB, LT/RT e os dois botões laterais do mouse fazem o mesmo.
+
+| Fase | O botão pede | Em espera (amarelo/azul) | Verde | 2 cliques seguidos |
+| --- | --- | --- | --- | --- |
+| antes do 1º combo, `COMBAR` | o combo | arma e executa sozinho no verde | executa na hora | executa na hora |
+| `TROCAR TIME` | a troca de time | arma e troca sozinho no verde | troca na hora | troca na hora |
+
+Durante o rodizio a fase já é `TROCAR TIME`: apertar de novo nessa hora arma a troca, que sai
+sozinha no verde. Combo e troca nunca ficam armados ao mesmo tempo. Diagnóstico: o evento
+`NEXT_ACTION` registra origem, fase e a ação escolhida. No modo Normal nada muda (bumpers =
+combo simples, gatilhos = reviver).
+
 ### Primeira volta: o ritmo do plano vale desde o primeiro ciclo
 
 Ao ligar o macro ou depois do F8, os seis Pokémon estão com o CD pronto. Só pelo
@@ -244,7 +254,7 @@ O tooltip mostra `Tank:` e `Sec:` lidos do `config.ahk` (não há mais `Ref: <ti
 
 Rotação 2+2+2, teclas `{1}/{3}/{5}` e `{2}/{4}/{6}`, `SleepAfterTankCombo`,
 `SleepAfterCombo`, `SleepAfterSwitch`, sequência de habilidades, debounce de 1000 ms
-da troca, modo 3-3, `Normal`, logger, tooltips (IDs, posições, quadrado central) e
+da troca, modo `Normal`, logger, tooltips (IDs, posições, quadrado central) e
 F8/F12/XButton1/XButton2. (A dívida global `Hoenn222_DebtMs` deixou de existir: cada
 Pokémon tem o próprio acumulador de CD.)
 
@@ -259,8 +269,7 @@ validação de time.
 .\tests\run-hoenn-switch-tests.ps1 -LoggerInitFailure
 ```
 
-**47 grupos PASS** (**48** com `DirCreate` falhando) mais o teste de congelamento
-(`run-live-stall-test.ps1`), exit code 0. A tabela abaixo descreve os primeiros grupos; os
+**44 grupos PASS** (**45** com `DirCreate` falhando) mais o teste de congelamento
 demais (H–AD: CD individual, plano, 1ª volta, pisos, atraso de saída) estão em
 `tests/hoenn-switch-tests.ahk`.
 

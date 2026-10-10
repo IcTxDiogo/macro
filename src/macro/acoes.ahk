@@ -1,37 +1,45 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 ; Acao de cada botao, conforme o modo. O mapeamento botao -> acao esta em
 ; src\interface\controle.ahk (controle) e main.ahk (mouse); aqui so o que cada um faz.
 
-; Gatilhos (LT/RT, botao lateral 2 do mouse): revive / troca de time.
-AcaoGatilhos(source := "direct") {
-    LogDiagnostico("TRIGGER_RECEIVED", "source=" source " mode=" ModoAtual " team=" TimeAtual)
+; BOTAO UNICO do modo 2-2-2: pede a PROXIMA acao do ciclo.
+;   fase COMBAR (ou antes do 1o combo)  -> combo        (PedirCombo)
+;   fase TROCAR TIME                    -> troca de time (PedirTrocaDeTime)
+; Cada acao executa na hora se o contador esta verde, arma e executa sozinha no verde se
+; ainda esta em espera, e executa na hora com dois cliques seguidos (emergencia).
+; Apertar durante o rodizio ja pede a troca: a fase muda para TROCAR TIME no inicio do combo.
+PedirProximaAcao(origem := "direct") {
+    proximaAcao := (FaseAtual == "WAITING_TEAM_SWITCH") ? "troca" : "combo"
+    LogDiagnostico("NEXT_ACTION", "source=" origem " phase=" FaseAtual " action=" proximaAcao " team=" TimeAtual)
+    if (proximaAcao == "troca")
+        PedirTrocaDeTime(origem)
+    else
+        PedirCombo()
+}
+
+; Bumpers (LB/RB, botao lateral 1 do mouse). Normal: combo simples. 2-2-2: proxima acao.
+AcaoBumpers(origem := "direct") {
     try {
         if (ModoAtual == "Normal") {
-            Reviver()
-        } else if (ModoAtual == "Hoenn33") {
-            if (TrocarDeTime(2)) {
-                Sleep(SleepAfterSwitch)
-                ControlSend("{" KeyPokestop "}", , GameWindow)
-                UsarPocao()
-            }
+            ComboSimples()
         } else if (ModoAtual == "Hoenn222") {
-            ; Troca na hora se TROCAR TIME ja esta verde; senao arma e troca
-            ; sozinha no verde. Duplo acionamento troca na hora.
-            PedirTrocaDeTime(source)
+            PedirProximaAcao(origem)
         }
     } catch as e {
-        LogDiagnostico("SWITCH_ERROR", "phase=trigger_action source=" source, e)
+        LogDiagnostico("SWITCH_ERROR", "phase=bumper_action source=" origem, e)
     }
 }
 
-; Bumpers (LB/RB, botao lateral 1 do mouse): combo.
-AcaoBumpers() {
-    if (ModoAtual == "Normal") {
-        ComboSimples()
-    } else if (ModoAtual == "Hoenn33") {
-        IniciarRodizio33()
-    } else if (ModoAtual == "Hoenn222") {
-        PedirCombo()
+; Gatilhos (LT/RT, botao lateral 2 do mouse). Normal: reviver. 2-2-2: proxima acao.
+AcaoGatilhos(origem := "direct") {
+    try {
+        if (ModoAtual == "Normal") {
+            Reviver()
+        } else if (ModoAtual == "Hoenn222") {
+            PedirProximaAcao(origem)
+        }
+    } catch as e {
+        LogDiagnostico("SWITCH_ERROR", "phase=trigger_action source=" origem, e)
     }
 }
 
@@ -40,7 +48,7 @@ AcaoFaceDown() {
 }
 
 AcaoFaceRight() {
-    ; LancarBolasAoRedor() ; Desativado para o respawn atual (Botão Livre!)
+    ; LancarBolasAoRedor() ; Desativado para o respawn atual (Botao Livre!)
 }
 
 AcaoFaceLeft() {

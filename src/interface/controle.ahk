@@ -66,7 +66,8 @@ DespacharBotoes(leitura, jogoAtivo) {
 
     DispararUmaVez(pressionados, "Triggers", (leitura.bRightTrigger > 200 || leitura.bLeftTrigger > 200) && jogoAtivo,
         () => AcaoGatilhos("controller"))
-    DispararUmaVez(pressionados, "Bumpers", (botoes & 0x0100 || botoes & 0x0200) && jogoAtivo, AcaoBumpers)
+    DispararUmaVez(pressionados, "Bumpers", (botoes & 0x0100 || botoes & 0x0200) && jogoAtivo,
+        () => AcaoBumpers("controller"))
     DispararUmaVez(pressionados, "FaceDown", (botoes & 0x1000 || botoes & 0x0002) && jogoAtivo, AcaoFaceDown)  ; A / DPad baixo
     DispararUmaVez(pressionados, "FaceRight", (botoes & 0x4000 || botoes & 0x0008) && jogoAtivo, AcaoFaceRight)  ; X / DPad direita
     DispararUmaVez(pressionados, "FaceLeft", (botoes & 0x2000 || botoes & 0x0004) && jogoAtivo, AcaoFaceLeft)    ; B / DPad esquerda

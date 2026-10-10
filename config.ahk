@@ -9,7 +9,6 @@ global DeadzoneMove := 20000
 global SleepAfterTankCombo := 2700    ; cast do tank -> chamada do secundario
 global SleepAfterSwitch := 800        ; chamada do secundario -> cast dele
 global SleepAfterCombo := 3000        ; depois do combo
-global SleepAfterSecondCombo := 3000  ; modo 3-3
 
 ; --- Teclas ---
 global KeyPokestop := "c"

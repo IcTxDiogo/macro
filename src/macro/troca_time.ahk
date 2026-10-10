@@ -1,12 +1,11 @@
 #Requires AutoHotkey v2.0
-; Troca de time: validacao, envio da tecla, atualizacao do estado e estatisticas.
+; Troca de time (2-2-2): validacao, envio da tecla, atualizacao do estado e estatisticas.
 
-; Troca para o proximo time. `totalDeTimes` e 3 no modo 2-2-2 e 2 no modo 3-3.
-; Devolve true se a tecla foi enviada. A troca nunca depende de calculo de tempo nem de
-; interface: so validacao, envio e atualizacao do estado (essa parte e atomica).
-TrocarDeTime(totalDeTimes := 2) {
-    global TimeAtual, TankDoTime2Modo33, TextoDeStatus
-    global FaseAtual, InicioDaFaseTick, UltimaTrocaDeTimeTick
+; Troca para o proximo time (1 -> 2 -> 3 -> 1). Devolve true se a tecla foi enviada.
+; A troca nunca depende de calculo de tempo nem de interface: so validacao, envio e
+; atualizacao do estado (essa parte e atomica).
+TrocarDeTime() {
+    global TimeAtual, TextoDeStatus, FaseAtual, InicioDaFaseTick, UltimaTrocaDeTimeTick
     global GameWindow, KeyPokestop, KeyFullDef
 
     criticoAnterior := A_IsCritical
@@ -14,18 +13,18 @@ TrocarDeTime(totalDeTimes := 2) {
     try {
         trocaTick := A_TickCount
         timeAnterior := TimeAtual
-        LogDiagnostico("SWITCH_REQUESTED", "from=" timeAnterior " total=" totalDeTimes " state=" FaseAtual)
-        if ((totalDeTimes != 2 && totalDeTimes != 3) || timeAnterior < 1 || timeAnterior > 3) {
-            LogDiagnostico("SWITCH_REJECTED", "reason=invalid_team total=" totalDeTimes " from=" timeAnterior)
+        LogDiagnostico("SWITCH_REQUESTED", "from=" timeAnterior " total=3 state=" FaseAtual)
+        if (timeAnterior < 1 || timeAnterior > 3) {
+            LogDiagnostico("SWITCH_REJECTED", "reason=invalid_team total=3 from=" timeAnterior)
             return false
         }
         ; Debounce: duas trocas em menos de 1 s seriam um clique duplicado.
-        if (totalDeTimes == 3 && UltimaTrocaDeTimeTick > 0 && trocaTick - UltimaTrocaDeTimeTick < 1000) {
+        if (UltimaTrocaDeTimeTick > 0 && trocaTick - UltimaTrocaDeTimeTick < 1000) {
             LogDiagnostico("SWITCH_REJECTED", "reason=debounce elapsed_ms=" (trocaTick - UltimaTrocaDeTimeTick))
             return false
         }
-        proximoTime := (timeAnterior >= totalDeTimes) ? 1 : timeAnterior + 1
-        teclaDoTime := (totalDeTimes == 3) ? (proximoTime * 2 - 1) : ((proximoTime == 1) ? 1 : TankDoTime2Modo33)
+        proximoTime := (timeAnterior >= 3) ? 1 : timeAnterior + 1
+        teclaDoTime := proximoTime * 2 - 1   ; {1}, {3}, {5}: o tank de cada time
         trocaAnteriorTick := UltimaTrocaDeTimeTick
 
         ; A janela pode sumir entre a validacao e o ControlSend: tratar os dois casos.
@@ -46,12 +45,10 @@ TrocarDeTime(totalDeTimes := 2) {
 
         ; Representa o envio solicitado, NAO uma confirmacao visual de entrada no jogo.
         TimeAtual := proximoTime
-        if (totalDeTimes == 3) {
-            UltimaTrocaDeTimeTick := trocaTick
-            FaseAtual := "WAITING_COMBO"
-            InicioDaFaseTick := trocaTick
-            RegistrarTrocaDeTime(timeAnterior, proximoTime, trocaTick)
-        }
+        UltimaTrocaDeTimeTick := trocaTick
+        FaseAtual := "WAITING_COMBO"
+        InicioDaFaseTick := trocaTick
+        RegistrarTrocaDeTime(timeAnterior, proximoTime, trocaTick)
         LogDiagnostico("SWITCH_STATE_UPDATED", "requested_team=" TimeAtual " visual_confirmation=unknown")
     } finally {
         Critical(criticoAnterior)
@@ -65,15 +62,12 @@ TrocarDeTime(totalDeTimes := 2) {
             LogDiagnostico("SWITCH_ERROR", "phase=post_command key=" tecla, e)
         }
     }
-    if (totalDeTimes == 3) {
-        ; O pedido pendente pertencia ao time que acabou de sair.
-        CancelarPedidosArmados("team_switch")
-        RegistrarEstatisticasDaTroca(proximoTime, timeAnterior, trocaTick, trocaAnteriorTick)
-    }
+    ; O pedido pendente pertencia ao time que acabou de sair.
+    CancelarPedidosArmados("team_switch")
+    RegistrarEstatisticasDaTroca(proximoTime, timeAnterior, trocaTick, trocaAnteriorTick)
     try {
-        modo := (totalDeTimes == 3) ? "2-2-2" : "3-3"
-        TextoDeStatus := "Modo: Hoenn " modo " - Time: " TimeAtual
-        RegistrarTrocaNoLog(proximoTime, modo)
+        TextoDeStatus := "Modo: Hoenn 2-2-2 - Time: " TimeAtual
+        RegistrarTrocaNoLog(proximoTime, "2-2-2")
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=team_logger", e)
     }

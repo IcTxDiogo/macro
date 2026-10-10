@@ -3,11 +3,10 @@
 ; Nota: neste AutoHotkey ler uma variavel `unset` e erro, entao tudo comeca inicializado.
 
 ; --- Modo e time ---
-global ModoAtual := "Hoenn222"        ; "Normal", "Hoenn33" ou "Hoenn222" (F12 / botao Back alternam)
+global ModoAtual := "Hoenn222"        ; "Normal" ou "Hoenn222" (F12 / botao Back alternam)
 global TextoDeStatus := "Modo: Hoenn 2-2-2 - Time: 1"
 global TimeAtual := 1                 ; time pedido (1 a 3); a entrada visual nao e confirmada
 global RodizioAtivo := false          ; trava: um rodizio por vez
-global TankDoTime2Modo33 := 4         ; so modo 3-3
 
 ; --- Fase do ciclo 2-2-2 ---
 ; FaseAtual: "WAITING_FIRST_COMBO", "WAITING_COMBO" (COMBAR) ou "WAITING_TEAM_SWITCH" (TROCAR TIME).

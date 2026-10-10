@@ -5,7 +5,7 @@ $script:Modulos = @(
     'src/nucleo/logger.ahk', 'src/nucleo/estado.ahk',
     'src/tempo/cooldown.ahk', 'src/tempo/planejador.ahk', 'src/tempo/cronometro.ahk',
     'src/macro/teclas.ahk', 'src/macro/teclas_inativas.ahk', 'src/macro/troca_time.ahk',
-    'src/macro/rodizio_33.ahk', 'src/macro/rodizio_222.ahk', 'src/macro/antecipacao.ahk',
+    'src/macro/rodizio_222.ahk', 'src/macro/antecipacao.ahk',
     'src/macro/antecipacao_combo.ahk', 'src/macro/antecipacao_troca.ahk',
     'src/macro/modos.ahk', 'src/macro/acoes.ahk',
     'src/interface/quadrado_central.ahk', 'src/interface/painel.ahk', 'src/interface/controle.ahk'
@@ -42,11 +42,11 @@ function Test-CamadaTempo([string]$SourceRoot) {
 function Test-MainCarrega([string]$SourceRoot, [string]$AutoHotkey) {
     $saida = Join-Path $env:TEMP ('macro-validate-' + [guid]::NewGuid().ToString('N') + '.txt')
     $p = Start-Process -FilePath $AutoHotkey -ArgumentList @('/ErrorStdOut=UTF-8', '/validate', ('"' + (Join-Path $SourceRoot 'main.ahk') + '"')) `
-        -WindowStyle Hidden -PassThru -RedirectStandardOutput $saida
+        -WindowStyle Hidden -PassThru -RedirectStandardOutput $saida -RedirectStandardError ($saida + ".err")
     $null = $p.Handle
     if (-not $p.WaitForExit(20000)) { $p.Kill(); throw 'Timeout validando main.ahk' }
     $p.WaitForExit()
-    if ($p.ExitCode -ne 0) { throw ("main.ahk nao carrega (exit " + $p.ExitCode + "): " + ((Get-Content -LiteralPath $saida -ErrorAction SilentlyContinue) -join ' ')) }
+    if ($p.ExitCode -ne 0) { throw ("main.ahk nao carrega (exit " + $p.ExitCode + "): " + ((@(Get-Content -LiteralPath $saida -ErrorAction SilentlyContinue) + @(Get-Content -LiteralPath ($saida + ".err") -ErrorAction SilentlyContinue)) -join ' ')) }
 }
 
 function Read-ModulosJuntos([string]$SourceRoot, [string[]]$Modulos, [scriptblock]$Leitor) {

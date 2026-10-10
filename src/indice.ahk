@@ -16,7 +16,6 @@
 #Include macro\teclas.ahk
 #Include macro\teclas_inativas.ahk
 #Include macro\troca_time.ahk
-#Include macro\rodizio_33.ahk
 #Include macro\rodizio_222.ahk
 #Include macro\antecipacao.ahk
 #Include macro\antecipacao_combo.ahk

@@ -37,11 +37,10 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | `macro/teclas.ahk` | teclas basicas (`ComboSimples`, pocao, alvo, reiniciar) |
 | `macro/teclas_inativas.ahk` | funcoes que o respawn atual nao usa (`LancarBolasAoRedor`, `ComboMrMime`) |
 | `macro/troca_time.ahk` | `TrocarDeTime`: validacao, envio, estado |
-| `macro/rodizio_33.ahk` | rodizio do modo 3-3 |
 | `macro/rodizio_222.ahk` | rodizio do modo 2-2-2 (registra cast e chamada no `tempo`) |
 | `macro/antecipacao*.ahk` | combo e troca armados (verde automatico) e emergencia (duplo clique) |
 | `macro/modos.ahk` | `TrocarModo` e `Resincronizar` (F8) |
-| `macro/acoes.ahk` | acao de cada botao conforme o modo (`Acao*`) |
+| `macro/acoes.ahk` | acao de cada botao conforme o modo; `PedirProximaAcao` e o botao unico do 2-2-2 |
 | `interface/controle.ahk` | laco de 30 ms: XInput, movimento, botoes -> acoes |
 | `interface/painel.ahk` | tooltip de texto e orquestracao da interface |
 | `interface/quadrado_central.ahk` | quadrado colorido (verde / azul / amarelo / violeta) |
@@ -85,6 +84,7 @@ executar nem ler o gamepad). `tests/simulacoes/` guarda os simuladores antigos d
 | `CD_PLAN` | plano calculado | `L`, `janelas`, `lure`, `tank_fora`, `sec_fora`, `latencia`, `saida_sec`, `margem` |
 | `CD_CAST` | cada cast | `slot`, `cd_main`, `cd_comeca`, `pronto`, `seguro` |
 | `CD_ENTRADA` | Pokemon entra em campo (troca ou chamada) | `cd_modelo_ms`, `taxa`, `pronto_em_ms` |
+| `NEXT_ACTION` | botao apertado no 2-2-2 | `source`, `phase`, `action` (combo ou troca), `team` |
 | `LOOP_STALL` | laco de 30 ms parado > 400 ms | `gap_ms`, `state` |
 
 `CD_ENTRADA` e o CD que o modelo espera; a barra F1-F8 do jogo mostra o real dos golpes

@@ -1,21 +1,18 @@
-﻿#Requires AutoHotkey v2.0
-; Modos do macro (Normal, Hoenn 3-3, Hoenn 2-2-2) e ressincronizacao do 2-2-2.
+#Requires AutoHotkey v2.0
+; Modos do macro (Normal e Hoenn 2-2-2) e ressincronizacao do 2-2-2.
 
+; F12 / botao Back: alterna Normal <-> Hoenn 2-2-2. Sair do 2-2-2 nunca deixa pedido armado.
 TrocarModo() {
-    global ModoAtual, TextoDeStatus, FaseAtual, TimeAtual
-    ; Sair do 2-2-2 nunca deixa um pedido de combo pendente no modo seguinte.
+    global ModoAtual, TextoDeStatus, TimeAtual
     CancelarPedidosArmados("mode_change")
     if (ModoAtual == "Normal") {
-        ModoAtual := "Hoenn33"
-        TextoDeStatus := "Modo: Hoenn 3-3 - Time: " TimeAtual
-    } else if (ModoAtual == "Hoenn33") {
         ModoAtual := "Hoenn222"
         TextoDeStatus := "Modo: Hoenn 2-2-2 - Time: " TimeAtual
         Resincronizar()
     } else {
         ModoAtual := "Normal"
         TextoDeStatus := "Modo: Normal"
-        DesenharQuadradoCentral() ; Limpa o tooltip central ao sair do modo Hoenn 2-2-2
+        DesenharQuadradoCentral() ; limpa o quadrado central ao sair do 2-2-2
     }
 }
 
@@ -32,7 +29,7 @@ Resincronizar() {
         UltimoComboTick := 0
         ChamadaDoSecundarioTick := 0
         EntradaDoTankTick[TimeAtual] := 0
-        IdDaExecucao++ ; Invalida atualizações de interface de callbacks atrasados
-        ResetarCooldowns(A_TickCount) ; Sem informação do jogo: os seis prontos
+        IdDaExecucao++ ; invalida rodizios agendados antes do F8
+        ResetarCooldowns(A_TickCount)
     }
 }

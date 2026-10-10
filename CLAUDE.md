@@ -1,8 +1,9 @@
 # CLAUDE.md — macro PokeAlliance (AutoHotkey v2)
 
 Macro de farm Hoenn **2-2-2**: 3 duplas (time 1, 2, 3), cada uma com um tank e um secundario.
-Fase COMBAR (combo) e fase TROCAR TIME (proxima dupla). O jogador aperta; o macro decide
-se executa agora, arma e espera o verde, ou trata como emergencia. Idioma do projeto: portugues.
+Fase COMBAR (combo) e fase TROCAR TIME (proxima dupla). Ha UM botao so: ele pede a PROXIMA
+acao do ciclo; o macro executa na hora (verde), arma e executa no verde, ou trata dois cliques
+como emergencia. Modos: Normal e Hoenn 2-2-2. Idioma do projeto: portugues.
 
 Estrutura, camadas e diagnostico: `docs/estrutura.md`. Historico e decisoes: `docs/tiers-e-combo-hoenn222.md`.
 
@@ -15,7 +16,7 @@ Estrutura, camadas e diagnostico: `docs/estrutura.md`. Historico e decisoes: `do
 | skill comida / folga | `config.ahk`: `Hoenn222_ExitLatencySecondaryMs`, `Hoenn222_LatencyMs`, `Hoenn222_MarginMs` |
 | tempo minimo fora (conforto) | `config.ahk`: `Hoenn222_MinLureMs`, `Hoenn222_MinSecondaryOutMs` |
 | teclas, janela, tela | `config.ahk` |
-| o que um botao faz | `src/macro/acoes.ahk` |
+| o que um botao faz (e qual a proxima acao) | `src/macro/acoes.ahk` (`PedirProximaAcao`) |
 | mapeamento botao do controle | `src/interface/controle.ahk` (`DespacharBotoes`) |
 | atalhos de teclado/mouse | `main.ahk` |
 | conta do cooldown, plano, verde | `src/tempo/` |
@@ -46,7 +47,8 @@ Depois de editar o config: recarregar o macro (Ctrl+Esc ou Start) e F8 para resi
 - O planejador acha a menor volta L em que os seis recuperam CD + atrasos + margem.
   A 1a volta ja segue o ritmo do plano (os seis comecam prontos, mas nao liberam de uma vez).
 - Cores: verde = executa; azul = faltam <= 10 s (COMBAR); amarelo = espera; violeta = armado.
-  Dois cliques em ate 400 ms = emergencia (executa na hora).
+  Dois cliques em ate 400 ms = emergencia (executa na hora). A proxima acao e decidida pela fase:
+  COMBAR -> combo; TROCAR TIME -> troca (`NEXT_ACTION` no log).
 
 ## Diagnosticar skill comida
 
