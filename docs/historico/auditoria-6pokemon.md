@@ -78,7 +78,7 @@ O menor `L` que fecha essa soma é a volta mínima sustentável. A soma das
 janelas é decrescente em `L` (CD maior exige menos tempo fora), então a busca
 é por bisseção na condição `soma(janelas) ≤ L`.
 
-**Verificado:** `tests/simular-6pokemon.ps1` seção 7 cruza a fórmula fechada
+**Verificado:** `tests/simulacoes/simular-6pokemon.ps1` seção 7 cruza a fórmula fechada
 com o simulador de eventos por busca binária. As duas concordam com diferença
 0 ms nas seis composições.
 

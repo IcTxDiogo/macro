@@ -1,10 +1,11 @@
 #Requires AutoHotkey v2.0
 ; Estado global do macro: time atual, travas, cronometro, pedidos armados.
 
+global ModoAtual := "Hoenn222"  ; "Normal", "Hoenn33" ou "Hoenn222" (F12 / botao Back alternam)
+global StatusText := "Modo: Hoenn 2-2-2 - Time: 1"
 global TimeAtual := 1          ; Time solicitado (1, 2 ou 3); entrada visual não confirmada
 global isRodizioAtivo := false ; Trava de segurança
 global TankAtualTime2_33 := 4  ; Específico para o modo 3-3
-global StatusText
 ; --- VARIÁVEIS DO CRONÔMETRO HOENN 2-2-2 ---
 global Hoenn222_State := "WAITING_FIRST_COMBO"
 global Hoenn222_StateStartTick := 0

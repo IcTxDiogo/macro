@@ -1,8 +1,8 @@
-# Otimizador dinâmico Hoenn 2-2-2 — cooldown individual dos 6 Pokémon
+﻿# Otimizador dinâmico Hoenn 2-2-2 — cooldown individual dos 6 Pokémon
 
 **Estado: modelagem revisada e validada por simulação. Código ainda não alterado.**
-Simulador: `tests/sim-cooldown-6pokemon.ps1`. Saída bruta:
-`docs/simulacao-cooldown-6pokemon.txt`.
+Simulador: `tests/simulacoes/sim-cooldown-6pokemon.ps1`. Saída bruta:
+`docs/historico/simulacao-cooldown-6pokemon.txt`.
 
 ---
 
@@ -320,7 +320,7 @@ global Hoenn222_SummonMs := 2700      ; animação, não margem
 global Hoenn222_SecondaryGapMs := 800 ; chamada -> cast
 ```
 
-**`src/hoenn_engine.ahk`** — três arrays de 6 + quatro funções
+**`src/tempo/cooldown.ahk`** — três arrays de 6 + quatro funções
 (`CdTouch`, `CdSetRate`, `CdCast`, `CdFaltaMs`) e `PlanHoenn222()` que devolve
 `{ L, w1, w2, w3 }`.
 

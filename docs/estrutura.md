@@ -1,53 +1,82 @@
-# Estrutura do macro
+﻿# Estrutura do macro
 
-Ponto de entrada: `main.ahk` (modo, atalhos e ações). Tudo é configurado em `config.ahk`.
+```
+main.ahk          entrada: includes, XInput, atalhos de teclado e mouse
+config.ahk        tudo que se ajusta (teclas, tiers, tempos, margem)
+lib/XInput.ahk    leitura do controle
+src/
+  indice.ahk      lista (e ordem) dos modulos
+  nucleo/         estado global e log; sem regra de jogo
+  tempo/          CONTROLE DE TEMPO: quando cada coisa pode acontecer
+  macro/          o que o macro FAZ no jogo
+  interface/      gamepad e indicador visual
+tests/            runners e testes (ver abaixo)
+docs/             documentacao atual; docs/historico guarda analises antigas
+```
 
-## Módulos (`src/`)
+## Camadas
 
-`hoenn_engine.ahk` e `mapeamento-controle.ahk` são só índices de `#Include`. A ordem
-importa: `estado.ahk` e `cooldown.ahk` leem o `config.ahk` ao carregar.
+Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo`.
 
-| Módulo | Responsabilidade |
+| Camada | Pergunta que responde | Pode enviar tecla? |
+| --- | --- | --- |
+| `nucleo` | em que estado estamos? | nao |
+| `tempo` | quando posso agir sem a skill ser comida? | **nunca** (o teste falha) |
+| `macro` | o que enviar ao jogo, e quando o pedido do jogador vira acao | sim |
+| `interface` | o que o jogador esta apertando e o que mostrar | so movimento (WASD) |
+
+## Modulos
+
+| Modulo | Responsabilidade |
 | --- | --- |
-| `core_actions.ahk` | teclas básicas (`ComboSimples`, poção, bola, alvo) |
-| `logger.ahk` | log de sessão (`logs/`) e diagnóstico (`SwitchDebug`, `%TEMP%\macro_switch_debug.log`) |
-| `estado.ahk` | variáveis globais de estado: time atual, fase, travas, pedidos armados |
-| `cooldown.ahk` | CD individual dos 6 Pokémon (acumulador preguiçoso, taxas, latência, margem) |
-| `planejador.ahk` | menor volta sustentável e janelas por dupla (`PlanHoenn222`) |
-| `cronometro.ahk` | alvo de cada fase, pendente até o verde, quem segura o verde |
-| `troca_time.ahk` | `TrocarTimeHoenn`: validação, envio, estado |
-| `combos.ahk` | rodízio dos modos 3-3 e 2-2-2 |
-| `antecipacao.ahk` | cancelamento comum dos pedidos armados |
-| `antecipacao_combo.ahk` | botão de combo: normal, armado, emergência |
-| `antecipacao_troca.ahk` | gatilho de troca: normal, armado, emergência |
-| `indicador.ahk` | tooltip e quadrado central colorido |
-| `controle.ahk` | laço de 30 ms: XInput, movimento, botões |
+| `nucleo/estado.ahk` | variaveis globais: modo, time atual, fase, travas, pedidos armados |
+| `nucleo/logger.ahk` | log de sessao (`logs/`) e diagnostico (`SwitchDebug`, `%TEMP%\macro_switch_debug.log`) |
+| `tempo/cooldown.ahk` | CD individual dos 6 Pokemon (acumulador, taxa fora/dentro da Ball, atrasos, margem) |
+| `tempo/planejador.ahk` | menor volta sustentavel e janelas por dupla (`PlanHoenn222`) |
+| `tempo/cronometro.ahk` | alvo de cada fase, pendente ate o verde, quem segura o verde |
+| `macro/teclas.ahk` | teclas basicas (`ComboSimples`, pocao, alvo, reiniciar) |
+| `macro/teclas_inativas.ahk` | funcoes que o respawn atual nao usa (`ThrowBallAround`, `MrMimeCombo`) |
+| `macro/troca_time.ahk` | `TrocarTimeHoenn`: validacao, envio, estado |
+| `macro/rodizio_33.ahk` | rodizio do modo 3-3 |
+| `macro/rodizio_222.ahk` | rodizio do modo 2-2-2 (registra cast e chamada no `tempo`) |
+| `macro/antecipacao*.ahk` | combo e troca armados (verde automatico) e emergencia (duplo clique) |
+| `macro/modos.ahk` | `TrocarModo` e `ResincronizarHoenn222` (F8) |
+| `macro/acoes.ahk` | acao de cada botao conforme o modo (`Acao_*`) |
+| `interface/controle.ahk` | laco de 30 ms: XInput, movimento, botoes -> acoes |
+| `interface/painel.ahk` | tooltip de texto e orquestracao da interface |
+| `interface/quadrado_central.ahk` | quadrado colorido (verde / azul / amarelo / violeta) |
 
-## Regras que não se quebram
+A ordem de `indice.ahk` importa: `estado` e `cooldown` leem o `config.ahk` ao carregar.
 
-- O laço de `controle.ahk` nunca usa `Critical`, `Sleep` nem executa ação longa:
+## Regras que nao se quebram
+
+- O laco de `interface/controle.ahk` nunca usa `Critical`, `Sleep` nem executa acao longa:
   agenda com `SetTimer(fn, -1)`. Ver `docs/tiers-e-combo-hoenn222.md`.
-- A troca de time nunca fica presa por falha de cálculo: na dúvida, troca.
-- Os intervalos internos do combo (2700 / 800 / 3000 ms) não são alterados pelo otimizador.
+- A troca de time nunca fica presa por falha de calculo: na duvida, troca.
+- Os intervalos internos do combo (2700 / 800 / 3000 ms) nao sao alterados pelo otimizador.
+- `tempo/` so calcula: nao envia tecla, nao toca em janela, tooltip nem timer.
 
 ## Testes
 
 ```powershell
-powershell -File tests\run-hoenn-switch-tests.ps1                 # lógica isolada, relógio e timers simulados
+powershell -File tests\run-hoenn-switch-tests.ps1                 # logica isolada, relogio e timers simulados
 powershell -File tests\run-hoenn-switch-tests.ps1 -LoggerInitFailure
-powershell -File tests\run-live-stall-test.ps1                    # timers reais: laço não congela
+powershell -File tests\run-live-stall-test.ps1                    # timers reais: laco nao congela
 ```
 
-`tests/fontes.ps1` lista os módulos usados pelos runners e falha se os índices de
-include saírem de sincronia.
+Antes de rodar os testes, os runners conferem: (1) `src/indice.ahk` e `tests/fontes.ps1`
+listam os mesmos modulos, na mesma ordem, e nenhum `.ahk` de `src/` ficou fora; (2) `src/tempo`
+nao usa funcoes de macro/interface; (3) o `main.ahk` carrega de verdade (`/validate`, sem
+executar nem ler o gamepad). `tests/simulacoes/` guarda os simuladores antigos do modelo.
 
-## Diagnóstico do cooldown (comparar com a barra de golpes do jogo)
+## Diagnostico do cooldown (comparar com a barra de golpes do jogo)
 
 | Evento | Quando | Campos |
 | --- | --- | --- |
+| `CD_PLAN` | plano calculado | `L`, `janelas`, `lure`, `tank_fora`, `sec_fora`, `latencia`, `saida_sec`, `margem` |
 | `CD_CAST` | cada cast | `slot`, `cd_main`, `cd_comeca`, `pronto`, `seguro` |
-| `CD_ENTRADA` | Pokémon entra em campo (troca ou chamada) | `cd_modelo_ms`, `taxa`, `pronto_em_ms` |
-| `LOOP_STALL` | laço de 30 ms parado > 400 ms | `gap_ms`, `state` |
+| `CD_ENTRADA` | Pokemon entra em campo (troca ou chamada) | `cd_modelo_ms`, `taxa`, `pronto_em_ms` |
+| `LOOP_STALL` | laco de 30 ms parado > 400 ms | `gap_ms`, `state` |
 
-`CD_ENTRADA` é o CD que o modelo espera; a barra F1–F8 do jogo mostra o real dos golpes
-do Pokémon que está fora. A diferença é o erro do modelo para aquele Pokémon.
+`CD_ENTRADA` e o CD que o modelo espera; a barra F1-F8 do jogo mostra o real dos golpes
+do Pokemon que esta fora. A diferenca e o erro do modelo para aquele Pokemon.

@@ -7,6 +7,8 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'fontes.ps1')
 Test-IndicesDeInclude $SourceRoot
+Test-CamadaTempo $SourceRoot
+Test-MainCarrega $SourceRoot $AutoHotkey
 $testDirectory = Join-Path $env:TEMP ('macro-switch-tests-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testDirectory | Out-Null
 if ($LoggerInitFailure) {
@@ -23,16 +25,12 @@ function Read-TestSource([string]$relativePath) {
     return ([regex]::Replace($source, "(?<!`r)`n", "`r`n"))
 }
 
-$main = Read-TestSource 'main.ahk'
-$main = $main.Substring($main.IndexOf('TrocarModo() {'))
-$main = $main.Substring(0, $main.IndexOf('; --- HOTKEYS PARA TECLADO E MOUSE ---'))
-$mapping = Read-ModulosJuntos $SourceRoot $script:ModulosInterface { param($m) Read-TestSource $m }
-$mapping = [regex]::Replace($mapping, '(?m)^\^Esc::.*\r?\n|^SetTimer\(GameLoop, 30\).*\r?\n', '')
-$logger = Read-TestSource 'src/logger.ahk'
-$logger = $logger.Replace('A_ScriptDir "\logs"', 'A_ScriptDir "\session_logs"')
-$logger = $logger.Replace('A_Temp "\macro_switch_debug.log"', 'A_ScriptDir "\debug-init.log"')
-$engine = Read-ModulosJuntos $SourceRoot $script:ModulosMotor { param($m) Read-TestSource $m }
-$source = (Read-TestSource 'config.ahk') + "`r`n" + $logger + "`r`n" + (Read-TestSource 'src/core_actions.ahk') + "`r`n" + $engine + "`r`n" + $main + "`r`n" + $mapping
+# Os mesmos modulos, na mesma ordem do src/indice.ahk. O main.ahk (atalhos, XInput_Init,
+# IniciarControle) nunca entra: o runner so executa as funcoes de producao.
+$modulos = Read-ModulosJuntos $SourceRoot $script:Modulos { param($m) Read-TestSource $m }
+$modulos = $modulos.Replace('A_ScriptDir "\logs"', 'A_ScriptDir "\session_logs"')
+$modulos = $modulos.Replace('A_Temp "\macro_switch_debug.log"', 'A_ScriptDir "\debug-init.log"')
+$source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 
 # Executar as funções de produção, substituindo apenas fronteiras de I/O e relógio.
 $source = $source.Replace('GetHoenn222BaseTargetMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
@@ -56,8 +54,6 @@ $initFailure = if ($LoggerInitFailure) { 'true' } else { 'false' }
 $header = @"
 #Requires AutoHotkey v2.0
 global MockTick := 100000
-global ModoAtual := "Hoenn222"
-global comboMrMime := 0
 global TestBaseline := $mode
 global TestLoggerInitFailure := $initFailure
 "@

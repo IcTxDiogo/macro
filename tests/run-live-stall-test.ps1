@@ -17,6 +17,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'fontes.ps1')
 Test-IndicesDeInclude $SourceRoot
+Test-CamadaTempo $SourceRoot
 
 function Read-TestSource([string]$relativePath) {
     $source = Get-Content -LiteralPath (Join-Path $SourceRoot $relativePath) -Raw -Encoding UTF8
@@ -24,14 +25,8 @@ function Read-TestSource([string]$relativePath) {
     return ([regex]::Replace($source, "(?<!`r)`n", "`r`n"))
 }
 
-$main = Read-TestSource 'main.ahk'
-$main = $main.Substring($main.IndexOf('TrocarModo() {'))
-$main = $main.Substring(0, $main.IndexOf('; --- HOTKEYS PARA TECLADO E MOUSE ---'))
-$mapping = Read-ModulosJuntos $SourceRoot $script:ModulosInterface { param($m) Read-TestSource $m }
-$mapping = [regex]::Replace($mapping, '(?m)^\^Esc::.*\r?\n|^SetTimer\(GameLoop, 30\).*\r?\n', '')
-$logger = Read-TestSource 'src/logger.ahk'
-$engine = Read-ModulosJuntos $SourceRoot $script:ModulosMotor { param($m) Read-TestSource $m }
-$source = (Read-TestSource 'config.ahk') + "`r`n" + $logger + "`r`n" + (Read-TestSource 'src/core_actions.ahk') + "`r`n" + $engine + "`r`n" + $main + "`r`n" + $mapping
+$modulos = Read-ModulosJuntos $SourceRoot $script:Modulos { param($m) Read-TestSource $m }
+$source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 
 # Mesmas fronteiras de I/O do runner isolado, MENOS SetTimer, Sleep e A_TickCount.
 $source = $source.Replace('GetHoenn222BaseTargetMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
@@ -47,8 +42,6 @@ foreach ($entry in @{
 $header = @"
 #Requires AutoHotkey v2.0
 global MockTick := 100000
-global ModoAtual := "Hoenn222"
-global comboMrMime := 0
 global GameLoopTicks := []
 global Scenario := A_Args[1]
 Persistent()

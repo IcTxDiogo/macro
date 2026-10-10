@@ -1,7 +1,7 @@
-# Arquitetura consolidada — Otimizador dinâmico Hoenn 2+2+2
+﻿# Arquitetura consolidada — Otimizador dinâmico Hoenn 2+2+2
 
-Validação executada em `tests/validar-otimizador.ps1`; saída completa em
-`docs/validacao-otimizador.txt`. **Nenhuma implementação nova foi feita nesta
+Validação executada em `tests/simulacoes/validar-otimizador.ps1`; saída completa em
+`docs/historico/validacao-otimizador.txt`. **Nenhuma implementação nova foi feita nesta
 rodada** — o estado da árvore está descrito na seção 8.
 
 ---
@@ -10,7 +10,7 @@ rodada** — o estado da árvore está descrito na seção 8.
 
 ### Fixo (vem do código, nunca alterado pelo otimizador)
 
-`ExecutarRodizio222()` em `src/hoenn_engine.ahk`:
+`ExecutarRodizio222()` em `src/macro/rodizio_222.ahk`:
 
 ```
 AutoCombo tank      -> Sleep(SleepAfterTankCombo = 2700)

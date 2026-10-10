@@ -1,7 +1,7 @@
-# Tiers por dupla e combo antecipado/emergência — Hoenn 2-2-2
+﻿# Tiers por dupla e combo antecipado/emergência — Hoenn 2-2-2
 
-Alterações em `config.ahk`, `main.ahk`, `src/hoenn_engine.ahk`,
-`src/mapeamento-controle.ahk`, `src/logger.ahk` e nos testes isolados.
+Alterações em `config.ahk`, `main.ahk`, `src/tempo/*`, `src/macro/*`,
+`src/interface/*`, `src/nucleo/logger.ahk` e nos testes isolados.
 Nenhuma execução dentro do jogo foi feita nesta intervenção; a verificação
 foi feita sobre as funções de produção com as fronteiras de I/O substituídas
 por mocks, mais um boot real do script principal sem janela de jogo.
