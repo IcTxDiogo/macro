@@ -111,7 +111,7 @@ Hoenn222SecondaryPendenteMs(timeIndex, offsetMs) {
     emT1 := restante - SleepAfterTankCombo * taxa
     if (emT1 < 0)
         emT1 := 0
-    pendente := emT1 - Max(0, SleepAfterSwitch - Hoenn222_LatencyMs) + Hoenn222_MarginMs
+    pendente := emT1 - Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs) + Hoenn222_MarginMs
     return pendente > 0 ? pendente : 0
 }
 

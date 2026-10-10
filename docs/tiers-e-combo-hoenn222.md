@@ -178,6 +178,26 @@ casts (saída da Ball e início do CD novo): `Hoenn222CdTrocaTime` congela o tan
 por `LatencyMs`, o planejador usa `2·Latency + Margin` para todos e
 `Hoenn222CdReadyInMs` soma o congelamento ainda por vir. Num ciclo perfeito todo cast
 cai a `Margin` + 0–5 ms depois do CD zerado. Custo: a volta do plano sobe 0,2 s.
+
+### Atraso de saída próprio do secundário (gravação de 09/10 19:39–19:46)
+
+A F7 do Rampardos (secundário do time 2) foi comida 2 vezes em 5 e o teste seguinte
+mostrou o mesmo em outro secundário (time 3): sempre secundários, sempre com a skill
+"pronta" no cliente e rejeitada pelo servidor. O cruzamento barra F1–F8 × log mostrou
+que o modelo estava ~0,9 s otimista só para o secundário, enquanto o tank ficava
+dentro do erro de medida. A causa estava na estrutura: uma única constante
+(`LatencyMs = 250`) cobria três atrasos físicos diferentes — início do CD depois do
+cast, saída do tank (troca de time) e saída do secundário (chamada). O da chamada é
+maior: o tank é recolhido, a Ball abre e a barra do secundário só aparece ~0,6 s depois
+da tecla.
+
+Agora `Hoenn222_ExitLatencySecondaryMs` (1100 ms) congela o CD do secundário depois da
+chamada (`Hoenn222CdRegistrarChamada`), entra no planejador
+(`margemSec = Latency + ExitLatencySecondary + Margin`), na tolerância do combo
+(`Max(0, SleepAfterSwitch − ExitLatencySecondary) − Margin`) e no pendente do
+secundário. `MarginMs` volta a ser só folga de ruído. Custo medido nos testes: volta do
+plano 76,2 → 76,9 s. O valor 1100 ms vem de 2 falhas em ~14 casts de secundário; ajuste
+com `CD_CAST`/`CD_ENTRADA` + barra se aparecerem mais falhas.
 ## 3. Garantias
 
 - **Um pedido por vez.** `ComboComplexoHoenn222()` consome o pedido armado

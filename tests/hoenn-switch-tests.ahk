@@ -104,6 +104,10 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     ; plano de volta minima, e os grupos AA-AC ligam os pisos explicitamente.
     Hoenn222_MinLureMs := Map(1, 0, 2, 0, 3, 0)
     Hoenn222_MinSecondaryOutMs := Map(1, 0, 2, 0, 3, 0)
+    ; Os testes legados medem um atraso de saida unico (o do tank); o grupo AD e a
+    ; repeticao do ciclo perfeito (AE) ligam o atraso proprio do secundario.
+    Hoenn222_ExitLatencySecondaryMs := Hoenn222_LatencyMs
+    Hoenn222_SecondaryToleranceMs := Hoenn222CalcSecondaryToleranceMs()
     Sent := [], Timeline := [], Scheduled := [], Rendered := []
     FaultDebt := false, FaultLogger := false, FaultSend := false, FaultTooltip := false
     WindowAvailable := true, RealInvalidWindow := false
@@ -1023,8 +1027,12 @@ RunTests() {
         ; Com um jogador que age exatamente no verde, nenhum cast pode acontecer
         ; antes de CD zerado + margem. O secundario perdia a margem inteira porque a
         ; tolerancia ignorava a latencia da chamada: era usado ~10 ms depois do CD
-        ; zerar em vez de 250 ms.
+        ; zerar em vez de 250 ms. Roda com o atraso de saida do secundario igual ao do
+        ; tank e com o proprio (AD): o verde tem de seguir o atraso que o modelo usa.
+        for exitZ in [Hoenn222_LatencyMs, 1100] {
         ResetCase("WAITING_FIRST_COMBO", 0, 0)
+        Hoenn222_ExitLatencySecondaryMs := exitZ
+        Hoenn222_SecondaryToleranceMs := Hoenn222CalcSecondaryToleranceMs()
         Hoenn222_TeamCasted := Map(1, false, 2, false, 3, false)
         ResetarCooldownsHoenn222(MockTick)
         pioresFolgas := Map("tank", 999999, "sec", 999999)
@@ -1070,9 +1078,10 @@ RunTests() {
         }
         Assert(voltaZ >= 4, "Z simulou voltas suficientes: " voltaZ)
         ; Passo da simulacao e 10 ms: tolera esse arredondamento, nada alem.
-        Assert(pioresFolgas["tank"] >= -10, "Z tank respeita a margem (pior folga " Round(pioresFolgas["tank"]) "ms)")
-        Assert(pioresFolgas["sec"] >= -10, "Z secundario respeita a margem (pior folga " Round(pioresFolgas["sec"]) "ms)")
-        Pass("Z em ciclo perfeito todo cast, tank e secundario, ocorre depois de CD zerado + margem")
+        Assert(pioresFolgas["tank"] >= -10, "Z tank respeita a margem (pior folga " Round(pioresFolgas["tank"]) "ms, saida sec " exitZ ")")
+        Assert(pioresFolgas["sec"] >= -10, "Z secundario respeita a margem (pior folga " Round(pioresFolgas["sec"]) "ms, saida sec " exitZ ")")
+        Pass("Z em ciclo perfeito todo cast, tank e secundario, ocorre depois de CD zerado + margem (saida do secundario " exitZ " ms)")
+        }
 ; --- PISOS DE CONFORTO: TEMPO FORA MINIMO DO TANK E DO SECUNDARIO ---
         ; O plano de volta minima usa so o cooldown. Os pisos dao ao jogador tempo
         ; para chegar ao ponto e puxar; o planejador acha a menor volta que cabe.
@@ -1166,6 +1175,50 @@ RunTests() {
             menorLure := Min(menorLure, v)
         Assert(menorLure >= 15000 - 20, "AC o tank nunca combou antes do piso de lure: menor " menorLure "ms")
         Pass("AC simulacao com pisos: volta = plano e o tank sempre fica fora ao menos o piso")
+
+        ; AD: atraso de saida proprio do secundario (chamada). Congela o CD dele depois da
+        ; chamada, entra no plano e na tolerancia do combo; o tank e a margem nao mudam.
+        ResetCase("WAITING_COMBO", 0, 0)
+        LBaseAD := PlanHoenn222().L
+        exitS := 1100
+        ResetCase("WAITING_COMBO", 0, 0)
+        Hoenn222_ExitLatencySecondaryMs := exitS
+        Hoenn222_SecondaryToleranceMs := Hoenn222CalcSecondaryToleranceMs()
+        slotTank := Hoenn222Slot(1, false)
+        slotSec := Hoenn222Slot(1, true)
+        Assert(Hoenn222_SecondaryToleranceMs == 0.5 * SleepAfterTankCombo + Max(0, SleepAfterSwitch - exitS) - Hoenn222_MarginMs
+            , "AD a tolerancia do combo usa o atraso de saida do secundario: " Hoenn222_SecondaryToleranceMs)
+        ; Chamada do secundario com CD pendente: so volta a recuperar exitS depois dela.
+        Hoenn222CdCast(1, true, MockTick)
+        cdSecAD := CdOf(slotSec)
+        Hoenn222CdRegistrarChamada(1)
+        Assert(Hoenn222CdReadyInMs(slotSec, MockTick) == exitS + cdSecAD + Hoenn222_MarginMs
+            , "AD apos a chamada o CD do secundario congela exitS: " Hoenn222CdReadyInMs(slotSec, MockTick))
+        MockTick += exitS
+        Assert(Hoenn222CdReadyInMs(slotSec, MockTick) == cdSecAD + Hoenn222_MarginMs, "AD passado o atraso o CD volta a correr")
+        ; O tank segue com o atraso da troca de time (LatencyMs), nao com o do secundario.
+        ResetCase("WAITING_COMBO", 0, 0)
+        Hoenn222_ExitLatencySecondaryMs := exitS
+        Hoenn222CdCast(1, false, MockTick)
+        cdTankAD := CdOf(slotTank)
+        Hoenn222CdTrocaTime(3, 1, MockTick)
+        Assert(Hoenn222CdReadyInMs(slotTank, MockTick) == Hoenn222_LatencyMs + cdTankAD + Hoenn222_MarginMs
+            , "AD o tank mantem o atraso da troca de time: " Hoenn222CdReadyInMs(slotTank, MockTick))
+        ; O plano cresce pouco e cada Pokemon recupera CD + o atraso do papel + margem.
+        ResetCase("WAITING_COMBO", 0, 0)
+        Hoenn222_ExitLatencySecondaryMs := exitS
+        planoE := PlanHoenn222()
+        Assert(planoE.L > LBaseAD && planoE.L < LBaseAD + 3000, "AD a volta cresce pouco: " Round(LBaseAD) " -> " Round(planoE.L))
+        Assert(Abs(planoE.Janelas[1] + planoE.Janelas[2] + planoE.Janelas[3] - planoE.L) < 1, "AD as janelas fecham em L")
+        for k in [1, 2, 3] {
+            FtS := planoE.SecFora[k]
+            recS := (FtS - Hoenn222_LatencyMs - exitS) + (planoE.L - FtS) * Hoenn222_RateInBall
+            Assert(recS >= GetHoenn222CdMainMs(k, true) + Hoenn222_MarginMs - 0.5, "AD secundario " k " recupera CD + saida + margem: " Round(recS))
+            FtT := planoE.TankFora[k]
+            recT := (FtT - 2 * Hoenn222_LatencyMs) + (planoE.L - FtT) * Hoenn222_RateInBall
+            Assert(recT >= GetHoenn222CdMainMs(k, false) + Hoenn222_MarginMs - 0.5, "AD tank " k " recupera CD + margem base: " Round(recT))
+        }
+        Pass("AD atraso de saida do secundario: congelamento, tolerancia e plano; tank inalterado (volta " Round(LBaseAD) " -> " Round(planoE.L) ")")
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")
     } catch as e {
         FileAppend("FAIL: " e.Message " | " e.What " | line=" e.Line "`n", "*", "UTF-8")

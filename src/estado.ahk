@@ -38,7 +38,13 @@ global Hoenn222_PlanCache := false
 ; (800 - Latency) ms recuperam a 1,0 ate o cast, e a margem ainda tem de caber
 ; antes dele. Esquecer a latencia aqui gastava a margem inteira do secundario:
 ; ele era usado ~10 ms depois do CD zerar em vez de 250 ms.
-global Hoenn222_SecondaryToleranceMs := 0.5 * SleepAfterTankCombo + Max(0, SleepAfterSwitch - Hoenn222_LatencyMs) - Hoenn222_MarginMs
+global Hoenn222_SecondaryToleranceMs := Hoenn222CalcSecondaryToleranceMs()
+Hoenn222CalcSecondaryToleranceMs() {
+    global SleepAfterTankCombo, SleepAfterSwitch, Hoenn222_ExitLatencySecondaryMs
+    global Hoenn222_MarginMs
+    return 0.5 * SleepAfterTankCombo + Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs)
+        - Hoenn222_MarginMs
+}
 global Hoenn222_TankEnterTick := Map(1, 0, 2, 0, 3, 0)
 global Hoenn222_P2EnterTick := Map(1, 0, 2, 0, 3, 0)
 global Hoenn222_TeamDuration := Map(1, 0, 2, 0, 3, 0)

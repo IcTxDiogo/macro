@@ -15,7 +15,7 @@ Hoenn222CdRegistrarCast(timeIndex, secundario := false) {
 
 Hoenn222CdRegistrarChamada(timeIndex) {
     global Hoenn222_CdOptimizerEnabled, Hoenn222_RateOutOfBall, Hoenn222_RateInBall
-    global Hoenn222_LatencyMs
+    global Hoenn222_ExitLatencySecondaryMs
     if !Hoenn222_CdOptimizerEnabled
         return
     try {
@@ -25,8 +25,9 @@ Hoenn222CdRegistrarChamada(timeIndex) {
         ; capacidade da volta passaria de 3,5x para 4,0x, inflando o plano.
         Hoenn222CdSetRate(Hoenn222Slot(timeIndex, false), Hoenn222_RateInBall, tick)
         Hoenn222CdLogEntrada(timeIndex, true, tick)
+        ; A saida do secundario (chamada) tem atraso proprio, maior que o da troca de time.
         Hoenn222CdSetRate(Hoenn222Slot(timeIndex, true), Hoenn222_RateOutOfBall,
-            tick, Hoenn222_LatencyMs)
+            tick, Hoenn222_ExitLatencySecondaryMs)
     } catch as e {
         SwitchDebug("SWITCH_ERROR", "phase=cd_call", e)
     }

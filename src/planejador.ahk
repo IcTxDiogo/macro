@@ -80,17 +80,19 @@ GetHoenn222TierText(timeIndex, role := "tank") {
 ;
 PlanHoenn222() {
     global Hoenn222_PlanCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
+    global Hoenn222_ExitLatencySecondaryMs
 
     if Hoenn222_PlanCache
         return Hoenn222_PlanCache
 
     lat := Hoenn222_LatencyMs
     marg := Hoenn222_MarginMs
-    ; Cada Pokemon perde a latencia duas vezes por intervalo entre casts: na saida
-    ; da Ball (troca de time para o tank, chamada do p2 para o secundario) e no
-    ; inicio do CD novo (o cast).
+    ; Cada Pokemon perde dois atrasos por intervalo entre casts: o da saida da Ball
+    ; (troca de time para o tank, chamada do p2 para o secundario) e o do inicio do CD
+    ; novo (o cast). O cast tem o mesmo atraso nos dois papeis; a saida do secundario
+    ; tem o proprio (Hoenn222_ExitLatencySecondaryMs).
     margemEfetiva := 2 * lat + marg
-    margemSec := margemEfetiva
+    margemSec := lat + Hoenn222_ExitLatencySecondaryMs + marg
     Pp := SleepAfterTankCombo
     minSec := SleepAfterSwitch + SleepAfterCombo   ; secundário precisa ficar fora até a troca
 
@@ -151,7 +153,7 @@ PlanHoenn222() {
         " tank_fora=" Round(tankFora[1]) "," Round(tankFora[2]) "," Round(tankFora[3])
         " sec_fora=" Round(secFora[1]) "," Round(secFora[2]) "," Round(secFora[3])
         " pos_cast=" Pp " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
-        " latencia=" lat " margem=" marg)
+        " latencia=" lat " saida_sec=" Hoenn222_ExitLatencySecondaryMs " margem=" marg)
     return Hoenn222_PlanCache
 }
 

@@ -46,7 +46,11 @@ global Hoenn222_CdByTier := Map("Lendário", 40000, "UR", 43000, "SR", 45000, "T
 global Hoenn222_CdDefaultMs := 50000  ; rotulo desconhecido
 global Hoenn222_RateOutOfBall := 1.0  ; recuperacao de CD por segundo, fora da Ball
 global Hoenn222_RateInBall := 0.5     ; e dentro da Ball
-global Hoenn222_LatencyMs := 250      ; congelamento do CD ao sair da Ball e ao castar
+global Hoenn222_LatencyMs := 250      ; congelamento do CD ao castar e ao sair da Ball na troca de time (tank)
+; Congelamento do CD do SECUNDARIO ao ser chamado. E um atraso fisico proprio (chamada,
+; recolhida do tank, bola), medido na gravacao de 09/10: o modelo com 250 ms estava ~0,9 s
+; otimista e a F7 do Rampardos foi comida 2 de 5. Nao e margem: a margem fica so para ruido.
+global Hoenn222_ExitLatencySecondaryMs := 1100
 global Hoenn222_MarginMs := 450       ; folga depois do CD estimado zerar (cada +50 ms ~ +0,1 s de volta)
 
 ; Alvos FIXOS de cada fase: usados so com o otimizador desligado ou se ele falhar.
