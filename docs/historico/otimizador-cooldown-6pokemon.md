@@ -1,8 +1,11 @@
 ﻿# Otimizador dinâmico Hoenn 2-2-2 — cooldown individual dos 6 Pokémon
 
-**Estado: modelagem revisada e validada por simulação. Código ainda não alterado.**
-Simulador: `tests/simulacoes/sim-cooldown-6pokemon.ps1`. Saída bruta:
-`docs/historico/simulacao-cooldown-6pokemon.txt`.
+**Documento histórico (fase de modelagem). Já implementado: a arquitetura vigente está em
+`docs/arquitetura-otimizador-cooldown.md`.** Valores desta página (margem 250 ms, `PrepareMs`,
+`SummonMs` configurável) foram superados: `PrepareMs` e a espera estendida foram descartados,
+a margem hoje é 450 ms e o atraso de saída do secundário é 1100 ms (`config.ahk`).
+Simulador: `tests/simulacoes/sim-cooldown-6pokemon.ps1`. Saída bruta: `simulacao-cooldown-6pokemon.txt`
+(nesta pasta).
 
 ---
 

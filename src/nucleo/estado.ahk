@@ -34,11 +34,12 @@ global Hoenn222_CdAvisoFeito := false
 ; e erro neste AutoHotkey, entao nunca usamos `unset` aqui.
 global Hoenn222_PlanCache := false
 ; Teto de CD do secundario no instante T0. Entre T0 e a chamada ele ainda esta
-; na Ball (0,5 x 2700); depois da chamada o jogo so conta o CD LatencyMs depois
-; (o mesmo congelamento que o acumulador aplica na saida da Ball), entao so
-; (800 - Latency) ms recuperam a 1,0 ate o cast, e a margem ainda tem de caber
-; antes dele. Esquecer a latencia aqui gastava a margem inteira do secundario:
-; ele era usado ~10 ms depois do CD zerar em vez de 250 ms.
+; na Ball (0,5 x 2700); depois da chamada o jogo so conta o CD
+; Hoenn222_ExitLatencySecondaryMs depois (o mesmo congelamento que o acumulador aplica
+; na chamada), entao so max(0, 800 - ExitLatencySecondary) ms recuperam a 1,0 ate o
+; cast, e a margem ainda tem de caber antes dele. Esquecer a latencia aqui gastava a
+; margem inteira do secundario (e com o atraso medido de 1100 ms, que e maior que o
+; intervalo de 800, nada recupera a 1,0 antes do cast).
 global Hoenn222_SecondaryToleranceMs := Hoenn222CalcSecondaryToleranceMs()
 Hoenn222CalcSecondaryToleranceMs() {
     global SleepAfterTankCombo, SleepAfterSwitch, Hoenn222_ExitLatencySecondaryMs

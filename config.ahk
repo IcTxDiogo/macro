@@ -1,5 +1,5 @@
 #Requires AutoHotkey v2.0
-; Configuracao do macro. Tempos em ms. Explicacao de cada bloco: docs/estrutura.md.
+; Configuracao do macro. Tempos em ms. Guia de ajuste: CLAUDE.md; detalhes: docs/tiers-e-combo-hoenn222.md.
 
 ; --- Jogo e entrada ---
 global GameWindow := "ahk_exe PokeAlliance_dx.exe"

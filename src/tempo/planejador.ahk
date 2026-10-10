@@ -49,13 +49,15 @@ GetHoenn222TierText(timeIndex, role := "tank") {
 ; anterior. F = tempo total fora da Ball entre dois casts consecutivos.
 ;
 ;     recuperação = (F - Λ)·1,0 + (L - F)·0,5
-;     (F - Λ) porque o congelamento de Λ fica DENTRO do primeiro trecho fora
+;     (F - Λ) porque os congelamentos ficam DENTRO do primeiro trecho fora
 ;
 ;     (F - Λ) + (L - F)·0,5  >=  CD + Δ
 ;     F  >=  2·(CD + Λ + Δ) − L
 ;
-; Λ e Δ entram uma vez cada. Λ porque o CD não corre durante o congelamento;
-; Δ como a folga exigida no próximo cast.
+; Λ soma dois atrasos físicos: o do início do CD depois do cast (Hoenn222_LatencyMs) e o
+; da saída da Ball (Hoenn222_LatencyMs na troca de time do tank; no secundário,
+; Hoenn222_ExitLatencySecondaryMs). O CD não corre durante o congelamento.
+; Δ (Hoenn222_MarginMs) é a folga exigida no próximo cast.
 ;
 ; -----------------------------------------------------------------------------
 ; QUEM PODE FICAR FORA, E QUANTO

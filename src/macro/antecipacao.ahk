@@ -2,7 +2,7 @@
 ; Cancelamento comum dos pedidos armados (combo e troca).
 
 ; Descarta um pedido pendente apos troca de time, ressincronizacao ou mudanca de
-; modo. Nada aqui altera o cronometro, a divida ou a rotacao.
+; modo. Nada aqui altera o cronometro nem a rotacao.
 CancelarComboArmadoHoenn222(reason := "") {
     global Hoenn222_ComboArmed, Hoenn222_ComboArmedTeam
     global Hoenn222_SwitchArmed, Hoenn222_SwitchArmedTeam

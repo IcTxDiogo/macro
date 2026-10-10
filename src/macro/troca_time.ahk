@@ -52,7 +52,7 @@ TrocarTimeHoenn(totalTimes := 2) {
             Hoenn222_State := "WAITING_COMBO"
             Hoenn222_StateStartTick := switchTick
             ; A dupla anterior inteira volta para a Ball; so o tank da dupla nova
-            ; sai, e LevancyMs depois do comando enviado.
+            ; sai, e LatencyMs depois do comando enviado.
             Hoenn222CdTrocaTime(previousTeam, nextTeam, switchTick)
         }
         SwitchDebug("SWITCH_STATE_UPDATED", "requested_team=" TimeAtual " visual_confirmation=unknown")

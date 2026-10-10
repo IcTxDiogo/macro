@@ -1,62 +1,35 @@
 ﻿# Tiers por dupla e combo antecipado/emergência — Hoenn 2-2-2
 
-Alterações em `config.ahk`, `main.ahk`, `src/tempo/*`, `src/macro/*`,
-`src/interface/*`, `src/nucleo/logger.ahk` e nos testes isolados.
-Nenhuma execução dentro do jogo foi feita nesta intervenção; a verificação
-foi feita sobre as funções de produção com as fronteiras de I/O substituídas
-por mocks, mais um boot real do script principal sem janela de jogo.
+Comportamento e decisões do 2-2-2: tiers, botão de combo e gatilho de troca (normal,
+armado, emergência), ritmo da 1ª volta, latências e correções. Os módulos estão em
+`docs/estrutura.md`. As seções datadas contam como o modelo chegou ao estado atual; os
+parâmetros vigentes estão no `config.ahk`.
 
 ## 1. Configuração de tier e de tempo
 
-Antes, o alvo do cronômetro e o rótulo do tier eram Conditional dentro do
-código:
-
-```ahk
-GetHoenn222BaseTargetMs(state, timeIndex) {
-    if (state == "WAITING_COMBO")
-        return (timeIndex == 1) ? 15000 : ((timeIndex == 2) ? 16000 : 15500)
-    ...
-```
-
-```ahk
-refText := (TimeAtual == 1) ? "Lendário" : "UR"
-```
-
-Ou seja, trocar de respawn exigia editar duas funções e o valor fixo ficava
-espalhado. Agora tudo que é do respawn está em um único bloco do `config.ahk`:
+Tudo que é do respawn está num único bloco do `config.ahk`:
 
 | Chave | Papel |
 | --- | --- |
-| `Hoenn222_TankTier` | rótulo do tier do Tank/Lurer de cada dupla |
-| `Hoenn222_SecondTier` | rótulo do tier do secundário chamado no combo |
-| `Hoenn222_ComboTargetMs` | ms dentro do time até o verde (fase COMBAR) |
-| `Hoenn222_SwitchTargetMs` | ms após o combo até o verde (fase TROCAR TIME) |
+| `Hoenn222_TankTier` | rótulo do tier do tank de cada dupla (`Lendário`, `UR`, `SR`, `T1`) |
+| `Hoenn222_SecondTier` | rótulo do tier do secundário de cada dupla |
+| `Hoenn222_CdByTier` | CD principal de cada rótulo (40 / 43 / 45 / 50 s) |
+| `Hoenn222_CdDefaultMs` | CD usado se o rótulo não estiver na tabela (50000) |
+| `Hoenn222_ComboTargetMs` / `Hoenn222_SwitchTargetMs` | alvos FIXOS de COMBAR e TROCAR TIME: só valem com o otimizador desligado ou se ele falhar |
 | `Hoenn222_EmergencyWindowMs` | janela do duplo acionamento (0 desliga) |
 
-Os rótulos de tier são **texto livre**: o que estiver no arquivo aparece no
-indicador, sem tabela de conversão no código. Um time ausente ou um mapa
-inválido devolve `?` e um alvo `0`, e registra `phase=tier_config` ou
-`phase=target_config` — nunca derruba o cronômetro.
+Com o otimizador ligado (padrão), o verde de cada fase vem do estado real dos seis Pokémon
+(ver `docs/arquitetura-otimizador-cooldown.md`), não dos alvos fixos. O rótulo escolhe o CD
+pela tabela `Hoenn222_CdByTier` e aparece como está no indicador. Rótulo fora da tabela usa
+`Hoenn222_CdDefaultMs` e registra `CD_TIER_UNKNOWN` uma vez; um time ausente do mapa mostra
+`?` no indicador e registra `phase=tier_config`. Nada disso derruba o cronômetro.
 
-### Por que tempo e tier são configurados separados
+### Por que ainda existem alvos fixos
 
-Os alvos atuais **não** são deriváveis do tier. Se `COMBAR` fosse
-`tank + secundário`, os valores medidos seriam inconsistentes:
-
-| Dupla | Tank | Secundário | COMBAR medido |
-| --- | --- | --- | --- |
-| 1 | Lendário | UR | 15000 |
-| 2 | UR | SR | 16000 |
-| 3 | SR | UR | 15500 |
-
-As duplas 2 e 3 trocam os papéis e mesmo assim diferem em 500 ms, e `UR + SR`
-aparece duas vezes com resultados diferentes. Os alvos são medições do
-respawn (move, cleanse, cadência do alvo), não uma função da raridade. Forçar
-uma fórmula mudaria o comportamento atual de todo respawn; por isso os dois
-ficam lado a lado no `config.ahk`, e o tier sozinho apenas troca o rótulo.
-
-Os valores padrão reproduzem exatamente o comportamento anterior
-(`15000/16000/15500` e `9500/11500/11500`).
+Foram a primeira versão: medidas do respawn (COMBAR `15000/16000/15500` ms e TROCAR TIME
+`9500/11500/11500` ms por dupla), que não são função só da raridade (duplas com os mesmos
+tiers trocados davam resultados diferentes). Hoje são a rede de segurança: se o cálculo do
+otimizador lançar exceção, o macro volta a eles em vez de travar.
 
 ## 2. Botão de combo: normal, antecipado e emergência
 
@@ -121,7 +94,8 @@ contado da troca de time. Depois do primeiro cast quem manda é só o cooldown r
 
 Simulação com as funções de produção (SR/Lendário, SR/UR, SR/UR): combos em
 0,0 s, 21,2 s e 48,3 s; trocas em 8,3 s, 35,4 s e 62,6 s; o time 1 volta a
-combar em 75,5 s, que é o `L` do plano, e todas as voltas seguintes duram o mesmo.
+combar em 75,5 s, que é o `L` do plano (margem de 400 ms da época; hoje ~76,9 s), e todas as
+voltas seguintes duram o mesmo.
 ### Margem do secundário e latência da chamada
 
 O jogo só conta o CD `LatencyMs` depois de o Pokémon sair da Ball, e o acumulador
@@ -132,6 +106,8 @@ CD zerar, não 250 ms. Agora a tolerância é
 entra no plano com `2·Latency + Margin` (o tank continua com `Latency + Margin`).
 Teste Z: num ciclo perfeito, todo cast de tank e de secundário ocorre depois de
 CD zerado + margem. Custo: a volta do plano sobe cerca de 0,2 s.
+
+> **Superado em parte:** o secundário passou a ter atraso de saída próprio (seção \
 ### Tempo fora mínimo (conforto): `Hoenn222_MinLureMs` e `Hoenn222_MinSecondaryOutMs`
 
 A volta mínima usa só o cooldown, sem folga para o jogador. Dois pisos por dupla no
@@ -141,14 +117,19 @@ O macro nunca libera o combo antes do piso e o planejador acha a menor volta que
 cabe, já tirando do secundário o que o cooldown dele permite. Regra de bolso:
 cada +1 s de volta libera ~7 s de tempo fora para dividir entre os seis Pokémon.
 
-Com SR/Lendário, SR/UR, SR/UR e margem 400 ms (simulação de jogador perfeito):
+Valores de 09/10, com margem de 400 ms e esses pisos como padrão. Hoje os pisos padrão são 0
+(`MinLureMs`/`MinSecondaryOutMs` no `config.ahk`) e a volta do plano é ~76,9 s; a regra
+de bolso acima continua valendo.
+
+SR/Lendário, SR/UR, SR/UR, simulação de jogador perfeito:
 
 | Pisos | Volta | Lure tank | Secundário fora |
 | --- | --- | --- | --- |
 | nenhum | 75,9 s | 12,7 s | 5,9 / 11,9 / 11,9 s |
 | lure 15 s | 77,6 s | 15,0 s | 4,2 / 10,2 / 10,2 s |
-| lure 15 s + Hyperior 8 s (padrão) | 78,9 s | 15,0 s | 8,0 / 8,9 / 8,9 s |
-| lure 15 s + Hyperior 8 s + sec 2/3 em 12 s | 85,1 s | 15,0 s | 8,0 / 12,0 / 12,0 s |
+| lure 15 s + secundário do time 1 em 8 s (padrão na época) | 78,9 s | 15,0 s | 8,0 / 8,9 / 8,9 s |
+| lure 15 s + secundário do time 1 em 8 s + secundários 2 e 3 em 12 s | 85,1 s | 15,0 s | 8,0 / 12,0 / 12,0 s |
+
 ### Congelamento do movimento durante a ação armada (corrigido)
 
 O laço de 30 ms (`GameLoop`) também envia o movimento. Quando a ação armada
@@ -244,7 +225,8 @@ Tudo em `A_Temp\macro_switch_debug.log`:
 O logger de sessão passou a registrar a origem do combo:
 `COMBO START | Modo: 2-2-2 | Time: 1 | Origem: manual | antecipado | emergencia`.
 
-Indicador visual — o quadrado e o botão leem o mesmo pendente, então a cor diz\nexatamente o que o botão vai fazer:
+Indicador visual — o quadrado e o botão leem o mesmo pendente, então a cor diz
+exatamente o que o botão vai fazer:
 
 | Cor | Significado |
 | --- | --- |
@@ -256,16 +238,15 @@ Indicador visual — o quadrado e o botão leem o mesmo pendente, então a cor d
 O alvo de `COMBAR` do otimizador é *quanto falta a partir de agora*; ele chega ao
 contador somado ao decorrido, de modo que o pendente é exatamente o que falta
 (antes o decorrido era descontado duas vezes e o verde acendia na metade do tempo).
-A margem de segurança conta a partir do instante em que o CD zerou. O tooltip deixou de mostrar `Ref: <tier>` fixo e
-passa a mostrar `Tank:` e `Sec:` lidos do `config.ahk`.
+A margem de segurança conta a partir do instante em que o CD zerou.
 
-## 5. O que não mudou
+O tooltip mostra `Tank:` e `Sec:` lidos do `config.ahk` (não há mais `Ref: <tier>` fixo).
 
 Rotação 2+2+2, teclas `{1}/{3}/{5}` e `{2}/{4}/{6}`, `SleepAfterTankCombo`,
-`SleepAfterCombo`, `SleepAfterSwitch`, sequência de habilidades, dívida
-`Max(0, alvo + dívida - decorrido)` calculada com o time **anterior**,
-debounce de 1000 ms da troca, modo 3-3, `Normal`, logger, tooltips (IDs,
-posições, quadrado central) e F8/F12/XButton1/XButton2.
+`SleepAfterCombo`, `SleepAfterSwitch`, sequência de habilidades, debounce de 1000 ms
+da troca, modo 3-3, `Normal`, logger, tooltips (IDs, posições, quadrado central) e
+F8/F12/XButton1/XButton2. (A dívida global `Hoenn222_DebtMs` deixou de existir: cada
+Pokémon tem o próprio acumulador de CD.)
 
 `Sleep`, `SetTimer` e o agendamento do combo são idênticos: a única diferença
 em `ComboComplexoHoenn222()` é a trava ser decidida sob `Critical` e haver
@@ -278,8 +259,10 @@ validação de time.
 .\tests\run-hoenn-switch-tests.ps1 -LoggerInitFailure
 ```
 
-**24 grupos PASS, exit code 0**; **25 grupos PASS** com `DirCreate` falhando,
-exit code 0. Os 17 grupos anteriores continuam sem alteração.
+**47 grupos PASS** (**48** com `DirCreate` falhando) mais o teste de congelamento
+(`run-live-stall-test.ps1`), exit code 0. A tabela abaixo descreve os primeiros grupos; os
+demais (H–AD: CD individual, plano, 1ª volta, pisos, atraso de saída) estão em
+`tests/hoenn-switch-tests.ahk`.
 
 | Grupo | Cenário | Resultado |
 | --- | --- | --- |
@@ -295,6 +278,6 @@ Correção no runner: `$process.Handle` passou a ser lido logo após
 `Start-Process`. Sem isso o `ExitCode` fica vazio no PowerShell 5.1 e uma
 execução inteiramente verde era reportada como falha.
 
-Boot real: cópia temporária de `main.ahk` com `ExitApp` agendado para 2 s,
-sem janela de jogo — exit code 0, sem saída de erro. Nenhum comando foi
-enviado ao jogo.
+Validação de carga: `tests\run-hoenn-switch-tests.ps1` roda `AutoHotkey /validate main.ahk`, que
+carrega todos os includes e confere a sintaxe sem executar nada (nao le o gamepad nem envia
+tecla). Nunca suba o `main.ahk` de verdade com o jogo aberto.

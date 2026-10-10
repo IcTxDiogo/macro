@@ -48,6 +48,15 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 
 A ordem de `indice.ahk` importa: `estado` e `cooldown` leem o `config.ahk` ao carregar.
 
+## Documentação
+
+| Documento | Para quê |
+| --- | --- |
+| `CLAUDE.md` (raiz) | guia rápido: onde ajustar, regras, como diagnosticar |
+| `docs/estrutura.md` | este arquivo: camadas, módulos, testes, diagnóstico |
+| `docs/tiers-e-combo-hoenn222.md` | comportamento do 2-2-2: tiers, combo/troca armados, 1ª volta, correções datadas |
+| `docs/arquitetura-otimizador-cooldown.md` | o modelo de cooldown e o planejador (fórmulas) |
+| `docs/historico/` | registros de fases anteriores; não refletem o estado atual |
 ## Regras que nao se quebram
 
 - O laco de `interface/controle.ahk` nunca usa `Critical`, `Sleep` nem executa acao longa:

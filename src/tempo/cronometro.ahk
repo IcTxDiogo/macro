@@ -59,10 +59,12 @@ GetHoenn222PendingMs() {
 ; COMBAR: quantos ms ate o combo INTEIRO ser viavel com os tempos internos fixos.
 ; Nao ha espera artificial: o macro nao impoe nada alem do cooldown.
 ;   Tank      : CD zerado + margem <= T0
-;   Secundario: entre T0 e a chamada ele ainda esta na Ball (0,5 x 2700) e so
-;               recupera 1,0 x 800 ate o cast; a margem ainda tem de caber.
-;               Dai o teto SEC_TOL = 0,5*SleepAfterTankCombo + SleepAfterSwitch
-;               - Margin, medido em CD que o secundario pode ter em T0.
+;   Secundario: entre T0 e a chamada ele ainda esta na Ball (0,5 x 2700) e, depois
+;               dela, o CD congela ExitLatencySecondary antes de recuperar a 1,0
+;               ate o cast (800 ms depois); a margem ainda tem de caber.
+;               Dai o teto SEC_TOL = 0,5*SleepAfterTankCombo +
+;               max(0, SleepAfterSwitch - ExitLatencySecondary) - Margin, medido
+;               em CD que o secundario pode ter em T0.
 ; E o maior dos dois: o verde so acende quando tank E secundario estao viaveis.
 GetHoenn222ComboTargetMs(timeIndex) {
     global Hoenn222_SecondaryToleranceMs

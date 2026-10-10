@@ -1,8 +1,8 @@
 ﻿# Arquitetura consolidada — Otimizador dinâmico Hoenn 2+2+2
 
-Validação executada em `tests/simulacoes/validar-otimizador.ps1`; saída completa em
-`docs/historico/validacao-otimizador.txt`. **Nenhuma implementação nova foi feita nesta
-rodada** — o estado da árvore está descrito na seção 8.
+Já implementado em `src/tempo`. Os simuladores que originaram a análise estão em
+`tests/simulacoes/validar-otimizador.ps1` (saída em `docs/historico/validacao-otimizador.txt`).
+Números desta página com margem 250 ms são da época da validação; o plano atual está em `CD_PLAN`.
 
 ---
 
@@ -73,11 +73,13 @@ O secundário ainda está na Ball entre `T0` e `T1`, recuperando a 0,5. Então o
 teto de CD admissível **no instante T0** é:
 
 ```
-SEC_TOL = 0,5 × Summon + Gap − Margin = 1350 + 800 − 250 = 1900 ms
+SEC_TOL = 0,5 × Summon + max(0, Gap − Λ_saída_sec) − Margin
+        = 1350 + max(0, 800 − 1100) − 450 = 900 ms      (valores atuais)
 ```
 
-Se `CD_sec(T0) > 1900`, o verde não acende: o macro sabe que o secundário
-estaria em cooldown no seu próprio cast, mesmo que o jogador aguardasse.
+Se `CD_sec(T0) > SEC_TOL`, o verde não acende: o macro sabe que o secundário estaria em
+cooldown no seu próprio cast, mesmo que o jogador aguardasse. Com o atraso de saída maior que
+o `Gap`, o secundário precisa chegar à chamada com o CD já zerado (mais a margem).
 
 Consequência validada (seção 6 da saída): com o Tank pronto e o secundário com
 3000 ms, o verde só acende 2200 ms depois; se o jogador forçar o combo nesse
@@ -92,12 +94,14 @@ A recuperação é contada **entre dois casts consecutivos** do mesmo Pokémon. 
 `F` = tempo total fora da Ball nesse intervalo:
 
 ```
-(F − Λ)·1,0 + (L − F)·0,5   ≥   CD + Δ
-F  ≥  2·(CD + Λ + Δ) − L
+(F − Λ_saída − Λ_cast)·1,0 + (L − F)·0,5   ≥   CD + Δ
+F  ≥  2·(CD + Λ_cast + Λ_saída + Δ) − L
 ```
 
-O `(F − Λ)` existe porque o congelamento de latência fica **dentro** do
-primeiro trecho fora da Ball. Λ e Δ entram uma vez cada.
+O congelamento de saída da Ball (Λ_saída) e o do início do CD depois do cast (Λ_cast)
+ficam dentro do primeiro trecho fora da Ball. Λ_cast e Λ_saída do tank valem
+`Hoenn222_LatencyMs` (250); Λ_saída do secundário é `Hoenn222_ExitLatencySecondaryMs`
+(1100). Δ é `MarginMs`, a folga exigida no próximo cast.
 
 Quem pode ficar fora, e quanto:
 
@@ -178,23 +182,17 @@ O estado já decorrido nunca é reconstruído: é acumulado.
 
 ---
 
-## 8. Estado da árvore de trabalho
+## 8. O que foi implementado (e descartado)
 
-Implementado e com a suíte de testes passando.
+Implementado em `src/tempo` e coberto pela suíte de testes (`tests/`).
 
-- **Git restaurado.** O repositório estava intacto — só o binário faltava após a
-  formatação. Instalado o Git 2.55.0, identidade `santos <ictxdiogo@gmail.com>`,
-  remote `https://github.com/IcTxDiogo/macro.git` intacto. `origin/main` é
-  ancestral direto: **sem divergência de histórico**, 4 commits locais à frente.
-- **Reaproveitado** da tentativa anterior: o acumulador preguiçoso por slot
-  (`Hoenn222Cd*`), o mapeamento tier → CD, o `PlanHoenn222()` com cache, o
-  cancelamento de pedido armado e o fallback para os alvos fixos.
-- **Descartado:** `PrepareMs` artificial e a extensão dinâmica da espera interna
-  do secundário. `GetHoenn222SecondaryWaitMs` não existe mais; os intervalos
-  são `SleepAfterTankCombo` e `SleepAfterSwitch`, os valores originais.
-- **Sem espera artificial:** com todos os CD zerados o alvo de COMBAR é só a
-  margem (250 ms). Se o secundário não couber, o verde não acende — o macro
-  avisa quem falta em vez de estender o intervalo.
+- **Reaproveitado:** o acumulador preguiçoso por slot (`Hoenn222Cd*`), o mapeamento tier → CD,
+  o `PlanHoenn222()` com cache, o cancelamento de pedido armado e o fallback para os alvos fixos.
+- **Descartado:** `PrepareMs` artificial e a extensão dinâmica da espera interna do
+  secundário. Os intervalos são `SleepAfterTankCombo` e `SleepAfterSwitch`, os valores originais.
+- **Sem espera artificial:** com todos os CD zerados o alvo de COMBAR é só a margem
+  (`MarginMs`, 450 ms hoje). Se o secundário não couber, o verde não acende: o macro avisa
+  quem falta em vez de estender o intervalo.
 
 Correções de runtime encontradas durante a implementação:
 
@@ -211,12 +209,13 @@ Correções de runtime encontradas durante a implementação:
 
 ---
 
-## 9. O que ainda precisa de calibração no jogo
+## 9. O que foi calibrado em jogo e o que falta
 
-1. A tabela 40/43/45/50 s e as taxas 1,0 / 0,5 — a fórmula é exata, os
-   parâmetros precisam ser medidos.
-2. Se a saída da Ball tem latência observável (a simulação mostra que 500 ms
-   não causam cast perdido, apenas alongam a volta).
-3. Os logs `CD_CAST`, `CD_PLAN` e `CD_SEC_ESPERA` já previstos dão a medição
-   direta: tempo entre o comando e a primeira skill, e quantas vezes a
-   viabilidade do secundário quase estourou.
+1. A tabela 40/43/45/50 s e as taxas 1,0 / 0,5: a fórmula é exata, os parâmetros vêm de
+   medição. Na gravação de 09/10 o CD fora da Ball bateu em 1,00/s; dentro da Ball ficou em
+   0,487–0,495/s (consistente com 0,5 mais um atraso de saída).
+2. Latência de saída da Ball: medida em 09/10. Tank ~250 ms (dentro do erro de medida);
+   secundário ~1100 ms (`Hoenn222_ExitLatencySecondaryMs`). A amostra do secundário é pequena
+   (2 falhas em ~14 casts): confirmar com 10+ voltas.
+3. Diagnóstico: `CD_CAST`, `CD_PLAN` e `CD_ENTRADA` (CD que o modelo espera na entrada de
+   cada Pokémon) permitem comparar com os contadores da barra F1–F8. Ver `docs/estrutura.md`.

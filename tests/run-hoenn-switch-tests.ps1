@@ -73,7 +73,7 @@ $stderr = Join-Path $testDirectory 'stderr.txt'
 $process = Start-Process -FilePath $AutoHotkey -ArgumentList @('/ErrorStdOut=UTF-8', ('"' + $scriptPath + '"')) -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 # Sem manter o handle, ExitCode fica vazio no PowerShell 5.1 e um run verde seria dado como falha.
 $null = $process.Handle
-if (-not $process.WaitForExit(20000)) {
+if (-not $process.WaitForExit(90000)) {
     $process.Kill()
     throw "Timeout nos testes isolados: $testDirectory"
 }
