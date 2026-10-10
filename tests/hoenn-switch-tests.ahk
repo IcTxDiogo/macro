@@ -112,8 +112,8 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     FaultDebt := false, FaultLogger := false, FaultSend := false, FaultTooltip := false
     WindowAvailable := true, RealInvalidWindow := false
     MockInput.bRightTrigger := 0
-    StartComboTick := 0
-    CurrentSessionLogFile := A_ScriptDir "\session_logs\test-session.txt"
+    InicioDoComboTick := 0
+    ArquivoDoLogDaSessao := A_ScriptDir "\session_logs\test-session.txt"
     DiagnosticoAtivo := true
     ArquivoDiagnostico := A_ScriptDir "\switch-debug.log"
     if FileExist(ArquivoDiagnostico)
@@ -253,7 +253,7 @@ RunTests() {
         AssertAcceptedSequence()
         Assert(InStr(DebugText(), "phase=team_logger"), "H caller isolates logger exception")
         ResetCase()
-        CurrentSessionLogFile := A_ScriptDir "\nonexistent\log.txt"
+        ArquivoDoLogDaSessao := A_ScriptDir "\nonexistent\log.txt"
         AcaoGatilhos()
         AssertAcceptedSequence()
         Assert(InStr(DebugText(), "phase=session_logger"), "H real FileAppend failure isolated")
@@ -1240,7 +1240,7 @@ RunBaseline() {
         Pass("BASELINE logger throws: TimeAtual=2, ControlSend count=0")
 
         ResetCase()
-        CurrentSessionLogFile := A_ScriptDir "\nonexistent\session.log"
+        ArquivoDoLogDaSessao := A_ScriptDir "\nonexistent\session.log"
         caught := false
         try AcaoGatilhos()
         catch as e {

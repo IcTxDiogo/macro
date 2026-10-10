@@ -1,102 +1,95 @@
-﻿#Requires AutoHotkey v2.0
-; Troca de time (validacao, envio, estado e estatisticas).
+#Requires AutoHotkey v2.0
+; Troca de time: validacao, envio da tecla, atualizacao do estado e estatisticas.
 
-TrocarDeTime(totalTimes := 2) {
+; Troca para o proximo time. `totalDeTimes` e 3 no modo 2-2-2 e 2 no modo 3-3.
+; Devolve true se a tecla foi enviada. A troca nunca depende de calculo de tempo nem de
+; interface: so validacao, envio e atualizacao do estado (essa parte e atomica).
+TrocarDeTime(totalDeTimes := 2) {
     global TimeAtual, TankDoTime2Modo33, TextoDeStatus
-    global GameWindow, KeyPokestop, KeyFullDef
     global FaseAtual, InicioDaFaseTick, UltimaTrocaDeTimeTick
-    global ComboArmado, TimeDoComboArmado
+    global GameWindow, KeyPokestop, KeyFullDef
 
-    ; Apenas validação/envio/commit são atômicos. A interface não participa da decisão.
-    previousCritical := A_IsCritical
+    criticoAnterior := A_IsCritical
     Critical("On")
     try {
-        switchTick := A_TickCount
-        previousTeam := TimeAtual
-        LogDiagnostico("SWITCH_REQUESTED", "from=" previousTeam " total=" totalTimes " state=" FaseAtual)
-        if ((totalTimes != 2 && totalTimes != 3) || previousTeam < 1 || previousTeam > 3) {
-            LogDiagnostico("SWITCH_REJECTED", "reason=invalid_team total=" totalTimes " from=" previousTeam)
+        trocaTick := A_TickCount
+        timeAnterior := TimeAtual
+        LogDiagnostico("SWITCH_REQUESTED", "from=" timeAnterior " total=" totalDeTimes " state=" FaseAtual)
+        if ((totalDeTimes != 2 && totalDeTimes != 3) || timeAnterior < 1 || timeAnterior > 3) {
+            LogDiagnostico("SWITCH_REJECTED", "reason=invalid_team total=" totalDeTimes " from=" timeAnterior)
             return false
         }
-        if (totalTimes == 3 && UltimaTrocaDeTimeTick > 0
-            && switchTick - UltimaTrocaDeTimeTick < 1000) {
-            LogDiagnostico("SWITCH_REJECTED", "reason=debounce elapsed_ms=" (switchTick - UltimaTrocaDeTimeTick))
+        ; Debounce: duas trocas em menos de 1 s seriam um clique duplicado.
+        if (totalDeTimes == 3 && UltimaTrocaDeTimeTick > 0 && trocaTick - UltimaTrocaDeTimeTick < 1000) {
+            LogDiagnostico("SWITCH_REJECTED", "reason=debounce elapsed_ms=" (trocaTick - UltimaTrocaDeTimeTick))
             return false
         }
-        nextTeam := (previousTeam >= totalTimes) ? 1 : previousTeam + 1
-        nextKey := (totalTimes == 3) ? (nextTeam * 2 - 1) : ((nextTeam == 1) ? 1 : TankDoTime2Modo33)
-        previousSwitchTick := UltimaTrocaDeTimeTick
-        previousState := FaseAtual
-        previousStateStartTick := InicioDaFaseTick
+        proximoTime := (timeAnterior >= totalDeTimes) ? 1 : timeAnterior + 1
+        teclaDoTime := (totalDeTimes == 3) ? (proximoTime * 2 - 1) : ((proximoTime == 1) ? 1 : TankDoTime2Modo33)
+        trocaAnteriorTick := UltimaTrocaDeTimeTick
 
-        ; A janela pode desaparecer entre a validação e ControlSend: tratar ambos os casos.
+        ; A janela pode sumir entre a validacao e o ControlSend: tratar os dois casos.
         if !WinExist(GameWindow) {
             LogDiagnostico("SWITCH_REJECTED", "reason=no_window window=" GameWindow)
             return false
         }
-        LogDiagnostico("SWITCH_COMMAND_BEGIN", "from=" previousTeam " to=" nextTeam " key=" nextKey " window=" GameWindow)
+        LogDiagnostico("SWITCH_COMMAND_BEGIN", "from=" timeAnterior " to=" proximoTime " key=" teclaDoTime " window=" GameWindow)
         try {
-            ControlSend("{" nextKey "}", , GameWindow)
+            ControlSend("{" teclaDoTime "}", , GameWindow)
         } catch as e {
-            LogDiagnostico("SWITCH_COMMAND_END", "result=failed to=" nextTeam " key=" nextKey)
+            LogDiagnostico("SWITCH_COMMAND_END", "result=failed to=" proximoTime " key=" teclaDoTime)
             LogDiagnostico("SWITCH_ERROR", "phase=primary_command", e)
             LogDiagnostico("SWITCH_REJECTED", "reason=send_failed")
             return false
         }
-        LogDiagnostico("SWITCH_COMMAND_END", "result=requested_only to=" nextTeam " key=" nextKey)
+        LogDiagnostico("SWITCH_COMMAND_END", "result=requested_only to=" proximoTime " key=" teclaDoTime)
 
-        ; Representa o envio solicitado, NÃO uma confirmação visual de entrada no jogo.
-        TimeAtual := nextTeam
-        if (totalTimes == 3) {
-            UltimaTrocaDeTimeTick := switchTick
+        ; Representa o envio solicitado, NAO uma confirmacao visual de entrada no jogo.
+        TimeAtual := proximoTime
+        if (totalDeTimes == 3) {
+            UltimaTrocaDeTimeTick := trocaTick
             FaseAtual := "WAITING_COMBO"
-            InicioDaFaseTick := switchTick
-            ; A dupla anterior inteira volta para a Ball; so o tank da dupla nova
-            ; sai, e LatencyMs depois do comando enviado.
-            RegistrarTrocaDeTime(previousTeam, nextTeam, switchTick)
+            InicioDaFaseTick := trocaTick
+            RegistrarTrocaDeTime(timeAnterior, proximoTime, trocaTick)
         }
         LogDiagnostico("SWITCH_STATE_UPDATED", "requested_team=" TimeAtual " visual_confirmation=unknown")
     } finally {
-        Critical(previousCritical)
+        Critical(criticoAnterior)
     }
 
-    ; Preservar a sequência original; uma falha auxiliar não cancela as ações seguintes.
-    for key in [KeyPokestop, KeyFullDef] {
+    ; Sequencia original: uma falha auxiliar nao cancela as acoes seguintes.
+    for tecla in [KeyPokestop, KeyFullDef] {
         try {
-            ControlSend("{" key "}", , GameWindow)
+            ControlSend("{" tecla "}", , GameWindow)
         } catch as e {
-            LogDiagnostico("SWITCH_ERROR", "phase=post_command key=" key, e)
+            LogDiagnostico("SWITCH_ERROR", "phase=post_command key=" tecla, e)
         }
     }
-    if (totalTimes == 3) {
+    if (totalDeTimes == 3) {
         ; O pedido pendente pertencia ao time que acabou de sair.
         CancelarPedidosArmados("team_switch")
-        RegistrarEstatisticasDaTroca(nextTeam, previousTeam, switchTick, previousSwitchTick)
+        RegistrarEstatisticasDaTroca(proximoTime, timeAnterior, trocaTick, trocaAnteriorTick)
     }
     try {
-        TextoDeStatus := "Modo: Hoenn " ((totalTimes == 3) ? "2-2-2" : "3-3") " - Time: " TimeAtual
-        RegistrarTrocaNoLog(nextTeam, (totalTimes == 3) ? "2-2-2" : "3-3")
+        modo := (totalDeTimes == 3) ? "2-2-2" : "3-3"
+        TextoDeStatus := "Modo: Hoenn " modo " - Time: " TimeAtual
+        RegistrarTrocaNoLog(proximoTime, modo)
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=team_logger", e)
     }
     return true
 }
 
-RegistrarEstatisticasDaTroca(nextTeam, previousTeam, switchTick, previousSwitchTick) {
-    global DuracaoDoTime, UltimoUsoDoTimeTick, IntervaloEntreUsosDoTime
-    global EntradaDoTankTick
-
-    ; A divida global saiu: cada Pokemon carrega seu proprio acumulador de CD e o
-    ; alvo de cada fase e rederivado do estado real. Aqui so ficam as estatisticas.
+; Estatisticas por time (so registro; nenhum alvo depende delas).
+RegistrarEstatisticasDaTroca(proximoTime, timeAnterior, trocaTick, trocaAnteriorTick) {
+    global DuracaoDoTime, UltimoUsoDoTimeTick, IntervaloEntreUsosDoTime, EntradaDoTankTick
     try {
-        if (previousSwitchTick > 0) {
-            DuracaoDoTime[previousTeam] := switchTick - previousSwitchTick
-        }
-        if (UltimoUsoDoTimeTick[nextTeam] > 0) {
-            IntervaloEntreUsosDoTime[nextTeam] := switchTick - UltimoUsoDoTimeTick[nextTeam]
-        }
-        UltimoUsoDoTimeTick[nextTeam] := switchTick
-        EntradaDoTankTick[nextTeam] := switchTick
+        if (trocaAnteriorTick > 0)
+            DuracaoDoTime[timeAnterior] := trocaTick - trocaAnteriorTick
+        if (UltimoUsoDoTimeTick[proximoTime] > 0)
+            IntervaloEntreUsosDoTime[proximoTime] := trocaTick - UltimoUsoDoTimeTick[proximoTime]
+        UltimoUsoDoTimeTick[proximoTime] := trocaTick
+        EntradaDoTankTick[proximoTime] := trocaTick
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=timer_statistics", e)
     }

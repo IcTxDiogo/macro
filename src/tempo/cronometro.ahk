@@ -1,144 +1,127 @@
-﻿#Requires AutoHotkey v2.0
-; Cronometro: alvo de cada fase, pendente ate o verde, quem segura o verde.
+#Requires AutoHotkey v2.0
+; Cronometro: ate quando esperar, por fase. Alimenta o indicador (verde = 0) e os pedidos
+; armados. Tudo aqui e uma DURACAO em ms, nunca um instante absoluto.
 
-; Alvo do cronometro para a fase e a dupla informadas. E sempre uma DURACAO em
-; ms contada a partir do inicio do estado, nunca um instante absoluto: e assim
-; que Hoenn222_ComboTargetMs e Hoenn222_SwitchTargetMs sao definidos no config,
-; e e assim que FaltaParaVerdeMs() desconta o tempo ja decorrido.
-; Com o otimizador ligado o alvo vem do estado real dos seis Pokemon; desligado,
-; ou se qualquer coisa falhar, volta aos alvos fixos do config.ahk.
-AlvoDaFaseMs(state, timeIndex) {
+; Quanto dura a fase `fase` do time contada desde o inicio dela (InicioDaFaseTick).
+; Com o otimizador ligado vem do estado real dos seis Pokemon; desligado, ou se algo
+; falhar, usa os alvos fixos do config.ahk.
+AlvoDaFaseMs(fase, time) {
     global Hoenn222_CdOptimizerEnabled, Hoenn222_ComboTargetMs, Hoenn222_SwitchTargetMs
     global InicioDaFaseTick
 
-    if (state != "WAITING_COMBO" && state != "WAITING_TEAM_SWITCH")
+    if (fase != "WAITING_COMBO" && fase != "WAITING_TEAM_SWITCH")
         return 0
 
     if Hoenn222_CdOptimizerEnabled {
         try {
-            ; FaltaParaComboViavelMs e "quanto falta A PARTIR DE AGORA", e ja
-            ; desconta a recuperacao ate este instante. Para obedecer o contrato
-            ; "duracao desde o inicio do estado" soma-se o decorrido: o pendente
-            ; (alvo - decorrido) volta a ser exatamente o que falta. Sem isso o
-            ; decorrido era descontado duas vezes e o verde acendia na metade do
-            ; tempo real, com o CD do tank ainda correndo.
-            return (state == "WAITING_COMBO")
-                ? (A_TickCount - InicioDaFaseTick) + FaltaParaComboViavelMs(timeIndex)
-                : DuracaoDoTrocarTimeMs(timeIndex)
+            ; FaltaParaComboViavelMs e "quanto falta a partir de agora"; somar o decorrido
+            ; devolve a duracao desde o inicio da fase. Sem isso o decorrido seria
+            ; descontado duas vezes e o verde acenderia na metade do tempo.
+            return (fase == "WAITING_COMBO")
+                ? (A_TickCount - InicioDaFaseTick) + FaltaParaComboViavelMs(time)
+                : DuracaoDoTrocarTimeMs(time)
         } catch as e {
-            LogDiagnostico("SWITCH_ERROR", "phase=cd_target state=" state, e)
+            LogDiagnostico("SWITCH_ERROR", "phase=cd_target state=" fase, e)
         }
     }
-    return (state == "WAITING_COMBO")
-        ? AlvoFixoDoConfigMs(Hoenn222_ComboTargetMs, timeIndex)
-        : AlvoFixoDoConfigMs(Hoenn222_SwitchTargetMs, timeIndex)
+    return (fase == "WAITING_COMBO")
+        ? AlvoFixoDoConfigMs(Hoenn222_ComboTargetMs, time)
+        : AlvoFixoDoConfigMs(Hoenn222_SwitchTargetMs, time)
 }
 
-; Alvos fixos do config.ahk, por dupla. Usado quando o otimizador esta
-; desligado e como destino de fallback se o estado real nao puder ser lido.
-AlvoFixoDoConfigMs(mapaTarget, timeIndex) {
+; Alvo fixo do config.ahk por time (otimizador desligado ou falha ao ler o estado real).
+AlvoFixoDoConfigMs(alvos, time) {
     try {
-        return (IsObject(mapaTarget) && mapaTarget.Has(timeIndex)) ? mapaTarget[timeIndex] : 0
+        return (IsObject(alvos) && alvos.Has(time)) ? alvos[time] : 0
     } catch as e {
-        LogDiagnostico("SWITCH_ERROR", "phase=target_config team=" timeIndex, e)
+        LogDiagnostico("SWITCH_ERROR", "phase=target_config team=" time, e)
         return 0
     }
 }
 
-; Quanto falta, em ms, para o alvo da fase atual. E uma DURACAO, nunca um
-; instante absoluto; quem compara com o relogio e o alvo da propria fase.
+; Quanto falta para a fase atual ficar verde. <= 0 e verde: apertar executa na hora.
 FaltaParaVerdeMs() {
     global FaseAtual, InicioDaFaseTick, TimeAtual
-    if (FaseAtual == "WAITING_FIRST_COMBO") {
+    if (FaseAtual == "WAITING_FIRST_COMBO")
         return 0
-    }
-    idealMs := AlvoDaFaseMs(FaseAtual, TimeAtual)
-    return idealMs - (A_TickCount - InicioDaFaseTick)
+    return AlvoDaFaseMs(FaseAtual, TimeAtual) - (A_TickCount - InicioDaFaseTick)
 }
 
-; COMBAR: quantos ms ate o combo INTEIRO ser viavel com os tempos internos fixos.
-; Nao ha espera artificial: o macro nao impoe nada alem do cooldown.
-;   Tank      : CD zerado + margem <= T0
-;   Secundario: entre T0 e a chamada ele ainda esta na Ball (0,5 x 2700) e, depois
-;               dela, o CD congela ExitLatencySecondary antes de recuperar a 1,0
-;               ate o cast (800 ms depois); a margem ainda tem de caber.
-;               Dai o teto SEC_TOL = 0,5*SleepAfterTankCombo +
-;               max(0, SleepAfterSwitch - ExitLatencySecondary) - Margin, medido
-;               em CD que o secundario pode ter em T0.
-; E o maior dos dois: o verde so acende quando tank E secundario estao viaveis.
-FaltaParaComboViavelMs(timeIndex) {
+; COMBAR: ms (a partir de agora) ate o combo INTEIRO ser viavel com os tempos internos
+; fixos. Sem espera artificial: so manda o cooldown. O verde acende quando os dois couberem:
+;   Tank       CD zerado + margem <= T0
+;   Secundario entre T0 e a chamada ele segue na Ball (0,5 x SleepAfterTankCombo); depois
+;              da chamada o CD congela Hoenn222_ExitLatencySecondaryMs antes de recuperar
+;              a 1,0 ate o cast (SleepAfterSwitch depois). O teto de CD que ele pode ter
+;              em T0 e ToleranciaDoSecundarioMs.
+FaltaParaComboViavelMs(time) {
     global ToleranciaDoSecundarioMs
-    tankMs := MsAteCastSeguro(SlotDoPokemon(timeIndex, false), A_TickCount)
-    ; Primeira volta: o CD zerado nao pode liberar o combo antes do ritmo do plano.
-    tankMs := Max(tankMs, FaltaParaLureDaPrimeiraVoltaMs(timeIndex))
-    secSlot := SlotDoPokemon(timeIndex, true)
-    cdSec := LerCooldownRestanteMs(secSlot, A_TickCount)
+    tankMs := MsAteCastSeguro(SlotDoPokemon(time, false), A_TickCount)
+    tankMs := Max(tankMs, FaltaParaLureDaPrimeiraVoltaMs(time))
+
+    slotSec := SlotDoPokemon(time, true)
+    cdSecMs := LerCooldownRestanteMs(slotSec, A_TickCount)
     secMs := 0
-    if (cdSec > ToleranciaDoSecundarioMs)
-        secMs := (cdSec - ToleranciaDoSecundarioMs) / LerTaxaDeRecuperacao(secSlot)
-    return Max(0, Max(tankMs, secMs))
+    if (cdSecMs > ToleranciaDoSecundarioMs)
+        secMs := (cdSecMs - ToleranciaDoSecundarioMs) / LerTaxaDeRecuperacao(slotSec)
+    return Max(0, tankMs, secMs)
 }
 
-; PRIMEIRA VOLTA. Depois do F8 (ou ao ligar) os seis Pokemon estao com o CD
-; pronto, entao nada obrigaria a esperar: o macro liberaria os tres times um
-; atras do outro e a espera inteira cairia de uma vez na volta do time 1. Para o
-; ritmo sustentavel valer desde o primeiro ciclo, o time que ainda nao fez o
-; primeiro cast so libera o combo depois do `lure` planejado, contado da troca
-; de time (o estado COMBAR comeca na troca). Passado o primeiro cast do time, o
-; que manda e so o cooldown real, como sempre.
-FaltaParaLureDaPrimeiraVoltaMs(timeIndex) {
+; Teto de CD que o secundario pode ter no instante T0 (inicio do combo) sem estourar o seu
+; cast. Entre T0 e a chamada ele ainda esta na Ball (0,5 x SleepAfterTankCombo); depois da
+; chamada o CD congela Hoenn222_ExitLatencySecondaryMs e so recupera a 1,0 pelo que sobrar
+; de SleepAfterSwitch; a margem ainda tem de caber antes do cast. Com o atraso medido
+; (1100 ms > 800 ms) nada recupera a 1,0: o CD tem de zerar dentro da Ball.
+CalcularToleranciaDoSecundarioMs() {
+    return 0.5 * SleepAfterTankCombo + Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs)
+        - Hoenn222_MarginMs
+}
+
+; Lure que ainda falta antes de liberar o combo (contado da troca de time, que e quando a
+; fase COMBAR comeca). Na primeira volta apos o F8 os seis estao prontos e nada obrigaria a
+; esperar; o macro liberaria os tres times em sequencia e a espera inteira cairia na volta
+; do time 1. Por isso, ate o tank do time castar uma vez, vale o lure do plano; depois, so o
+; piso de conforto do config (0 = so o cooldown manda).
+FaltaParaLureDaPrimeiraVoltaMs(time) {
     global TankJaCastou, InicioDaFaseTick
-    timeIndex := Integer(timeIndex)
-    ; Primeira volta: o lure do plano. Depois dela, so o piso de conforto do
-    ; config (tempo para chegar ao ponto e puxar); 0 = so o cooldown manda.
-    piso := TankJaCastou[timeIndex]
-        ? PisoDoConfigMs("Hoenn222_MinLureMs", timeIndex)
-        : PlanejarVolta().Lures[timeIndex]
-    falta := piso - (A_TickCount - InicioDaFaseTick)
-    return falta > 0 ? falta : 0
+    time := Integer(time)
+    lureMs := TankJaCastou[time]
+        ? PisoDoConfigMs("Hoenn222_MinLureMs", time)
+        : PlanejarVolta().Lures[time]
+    faltaMs := lureMs - (A_TickCount - InicioDaFaseTick)
+    return faltaMs > 0 ? faltaMs : 0
 }
 
-; Quanto de CD o secundario ainda teria no seu cast se o combo comecasse agora.
-; E o que permite avisar "nao viavel" sem nunca inventar cooldown disponivel.
-CooldownPendenteDoSecundarioMs(timeIndex, offsetMs) {
-    global ToleranciaDoSecundarioMs
-    slot := SlotDoPokemon(timeIndex, true)
-    agora := A_TickCount
-    cd := LerCooldownRestanteMs(slot, agora)
+; Quanto de CD o secundario ainda teria no seu cast se o combo comecasse `emMs` a partir
+; de agora. Permite avisar "nao viavel" sem inventar cooldown disponivel.
+CooldownPendenteDoSecundarioMs(time, emMs) {
+    slot := SlotDoPokemon(time, true)
     taxa := LerTaxaDeRecuperacao(slot)
-    restante := cd - (offsetMs * taxa)
-    if (restante < 0)
-        restante := 0
+    restanteMs := Max(0, LerCooldownRestanteMs(slot, A_TickCount) - emMs * taxa)
     ; entre o inicio do combo e a chamada o secundario segue dentro da Ball
-    emT1 := restante - SleepAfterTankCombo * taxa
-    if (emT1 < 0)
-        emT1 := 0
-    pendente := emT1 - Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs) + Hoenn222_MarginMs
-    return pendente > 0 ? pendente : 0
+    naChamadaMs := Max(0, restanteMs - SleepAfterTankCombo * taxa)
+    pendenteMs := naChamadaMs - Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs) + Hoenn222_MarginMs
+    return pendenteMs > 0 ? pendenteMs : 0
 }
 
-; Quem esta segurando o verde: "secundario", "tank" ou "" quando ja esta viavel.
-; E diagnostico: nao altera nenhum alvo, so diz ao jogador o que falta.
-QuemBloqueiaOCombo(timeIndex) {
+; Quem segura o verde do combo: "secundario", "tank", "primeira_volta" ou "" (viavel).
+; Diagnostico: nao altera nenhum alvo, so diz ao jogador o que falta.
+QuemBloqueiaOCombo(time) {
     global ToleranciaDoSecundarioMs
-    secSlot := SlotDoPokemon(timeIndex, true)
-    cdSec := LerCooldownRestanteMs(secSlot, A_TickCount)
-    if (cdSec > ToleranciaDoSecundarioMs)
+    cdSecMs := LerCooldownRestanteMs(SlotDoPokemon(time, true), A_TickCount)
+    if (cdSecMs > ToleranciaDoSecundarioMs)
         return "secundario"
-    if (MsAteCastSeguro(SlotDoPokemon(timeIndex, false), A_TickCount) > 0)
+    if (MsAteCastSeguro(SlotDoPokemon(time, false), A_TickCount) > 0)
         return "tank"
-    if (FaltaParaLureDaPrimeiraVoltaMs(timeIndex) > 0)
+    if (FaltaParaLureDaPrimeiraVoltaMs(time) > 0)
         return "primeira_volta"
     return ""
 }
 
-; TROCAR TIME: quanto tempo depois do CAST da dupla a troca pode acontecer. E
-; sempre uma DURACAO a partir do inicio do estado, nunca um instante absoluto.
-; A janela planejada comeca na troca de time (o tank sai) e o lure acontece
-; ANTES do cast; este estado comeca no cast. Da troca ate o cast ja passou o
-; lure, entao o que falta da janela e P + tempo do secundario fora. Usar a
-; janela inteira contava o lure duas vezes e atrasava o verde da troca.
-DuracaoDoTrocarTimeMs(timeIndex) {
+; TROCAR TIME: quanto tempo depois do CAST a troca pode acontecer. A janela do plano
+; comeca na troca de time e o lure vem antes do cast; esta fase comeca no cast, entao
+; resta a janela menos o lure (usar a janela inteira contava o lure duas vezes).
+DuracaoDoTrocarTimeMs(time) {
     plano := PlanejarVolta()
-    return plano.Janelas[timeIndex] - plano.Lures[timeIndex]
+    return plano.Janelas[time] - plano.Lures[time]
 }

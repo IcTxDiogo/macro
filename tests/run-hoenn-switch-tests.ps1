@@ -33,9 +33,9 @@ $modulos = $modulos.Replace('A_Temp "\macro_switch_debug.log"', 'A_ScriptDir "\d
 $source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 
 # Executar as funções de produção, substituindo apenas fronteiras de I/O e relógio.
-$source = $source.Replace('AlvoDaFaseMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
-$source = $source.Replace('RegistrarTrocaNoLog(newTeam, modo) {', 'RealTeamLogger(newTeam, modo) {')
-$source = $source.Replace('DesenharQuadradoCentral(text := "", x := 0, y := 0, color := "FFE033") {', 'RealCentralTooltip(text := "", x := 0, y := 0, color := "FFE033") {')
+$source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')
+$source = [regex]::Replace($source, '(?m)^RegistrarTrocaNoLog\(', 'RealTeamLogger(')
+$source = [regex]::Replace($source, '(?m)^DesenharQuadradoCentral\(', 'RealCentralTooltip(')
 foreach ($entry in @{
     'ControlSend' = 'MockControlSend'; 'Sleep' = 'MockSleep'; 'WinExist' = 'MockWinExist';
     'WinActive' = 'MockWinExist'; 'WinGetPos' = 'MockWinGetPos'; 'ToolTip' = 'MockToolTip';

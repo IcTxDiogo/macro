@@ -24,27 +24,27 @@ GameLoop() {
         LogDiagnostico("LOOP_STALL", "gap_ms=" (agoraTick - ultimoTick) " state=" FaseAtual " rodizio=" RodizioAtivo)
     ultimoTick := agoraTick
 
-    State := XInput_GetState(0)
-    if !State {
+    leitura := XInput_GetState(0)
+    if !leitura {
         AtualizarInterface(false)
         return
     }
 
-    isGameActive := WinExist(GameWindow)
-    if (isGameActive)
-        AtualizarMovimento(State)
-    DespacharBotoes(State, isGameActive)
+    jogoAtivo := WinExist(GameWindow)
+    if (jogoAtivo)
+        AtualizarMovimento(leitura)
+    DespacharBotoes(leitura, jogoAtivo)
     VerificarPedidosArmados()
     AtualizarInterface()
 }
 
 ; Analogico -> WASD. Cada tecla so e enviada quando o estado muda.
-AtualizarMovimento(State) {
+AtualizarMovimento(leitura) {
     static ativo := Map("w", false, "s", false, "a", false, "d", false)
-    AplicarTeclaDeMovimento("w", State.sThumbLY > DeadzoneMove || State.sThumbRY > DeadzoneMove, ativo)
-    AplicarTeclaDeMovimento("s", State.sThumbLY < -DeadzoneMove || State.sThumbRY < -DeadzoneMove, ativo)
-    AplicarTeclaDeMovimento("a", State.sThumbLX < -DeadzoneMove || State.sThumbRX < -DeadzoneMove, ativo)
-    AplicarTeclaDeMovimento("d", State.sThumbLX > DeadzoneMove || State.sThumbRX > DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("w", leitura.sThumbLY > DeadzoneMove || leitura.sThumbRY > DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("s", leitura.sThumbLY < -DeadzoneMove || leitura.sThumbRY < -DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("a", leitura.sThumbLX < -DeadzoneMove || leitura.sThumbRX < -DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("d", leitura.sThumbLX > DeadzoneMove || leitura.sThumbRX > DeadzoneMove, ativo)
 }
 
 AplicarTeclaDeMovimento(tecla, deveEstarAtiva, ativo) {
@@ -60,21 +60,21 @@ AplicarTeclaDeMovimento(tecla, deveEstarAtiva, ativo) {
 }
 
 ; Botoes do controle -> acao (src\macro\acoes.ahk). Dispara uma vez por pressao.
-DespacharBotoes(State, isGameActive) {
+DespacharBotoes(leitura, jogoAtivo) {
     static pressionados := Map()
-    b := State.wButtons
+    botoes := leitura.wButtons
 
-    DispararUmaVez(pressionados, "Triggers", (State.bRightTrigger > 200 || State.bLeftTrigger > 200) && isGameActive,
+    DispararUmaVez(pressionados, "Triggers", (leitura.bRightTrigger > 200 || leitura.bLeftTrigger > 200) && jogoAtivo,
         () => AcaoGatilhos("controller"))
-    DispararUmaVez(pressionados, "Bumpers", (b & 0x0100 || b & 0x0200) && isGameActive, AcaoBumpers)
-    DispararUmaVez(pressionados, "FaceDown", (b & 0x1000 || b & 0x0002) && isGameActive, AcaoFaceDown)    ; A / DPad baixo
-    DispararUmaVez(pressionados, "FaceRight", (b & 0x4000 || b & 0x0008) && isGameActive, AcaoFaceRight)  ; X / DPad direita
-    DispararUmaVez(pressionados, "FaceLeft", (b & 0x2000 || b & 0x0004) && isGameActive, AcaoFaceLeft)    ; B / DPad esquerda
-    DispararUmaVez(pressionados, "FaceUp", (b & 0x8000 || b & 0x0001) && isGameActive, AcaoFaceUp)        ; Y / DPad cima
-    DispararUmaVez(pressionados, "LeftThumb", (b & 0x0040) && isGameActive, AcaoLeftThumb)
-    DispararUmaVez(pressionados, "RightThumb", (b & 0x0080) && isGameActive, AcaoRightThumb)
-    DispararUmaVez(pressionados, "Start", (b & 0x0010) && isGameActive, ReiniciarMacro)               ; reinicia o macro
-    DispararUmaVez(pressionados, "Back", (b & 0x0020) && isGameActive, TrocarModo)                         ; troca de modo
+    DispararUmaVez(pressionados, "Bumpers", (botoes & 0x0100 || botoes & 0x0200) && jogoAtivo, AcaoBumpers)
+    DispararUmaVez(pressionados, "FaceDown", (botoes & 0x1000 || botoes & 0x0002) && jogoAtivo, AcaoFaceDown)  ; A / DPad baixo
+    DispararUmaVez(pressionados, "FaceRight", (botoes & 0x4000 || botoes & 0x0008) && jogoAtivo, AcaoFaceRight)  ; X / DPad direita
+    DispararUmaVez(pressionados, "FaceLeft", (botoes & 0x2000 || botoes & 0x0004) && jogoAtivo, AcaoFaceLeft)    ; B / DPad esquerda
+    DispararUmaVez(pressionados, "FaceUp", (botoes & 0x8000 || botoes & 0x0001) && jogoAtivo, AcaoFaceUp)        ; Y / DPad cima
+    DispararUmaVez(pressionados, "LeftThumb", (botoes & 0x0040) && jogoAtivo, AcaoLeftThumb)
+    DispararUmaVez(pressionados, "RightThumb", (botoes & 0x0080) && jogoAtivo, AcaoRightThumb)
+    DispararUmaVez(pressionados, "Start", (botoes & 0x0010) && jogoAtivo, ReiniciarMacro)               ; reinicia o macro
+    DispararUmaVez(pressionados, "Back", (botoes & 0x0020) && jogoAtivo, TrocarModo)                         ; troca de modo
 }
 
 ; Agenda `acao` uma unica vez enquanto o botao estiver pressionado; soltar re-arma.

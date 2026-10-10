@@ -29,8 +29,8 @@ $modulos = Read-ModulosJuntos $SourceRoot $script:Modulos { param($m) Read-TestS
 $source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 
 # Mesmas fronteiras de I/O do runner isolado, MENOS SetTimer, Sleep e A_TickCount.
-$source = $source.Replace('AlvoDaFaseMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
-$source = $source.Replace('RegistrarTrocaNoLog(newTeam, modo) {', 'RealTeamLogger(newTeam, modo) {')
+$source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')
+$source = [regex]::Replace($source, '(?m)^RegistrarTrocaNoLog\(', 'RealTeamLogger(')
 foreach ($entry in @{
     'ControlSend' = 'MockControlSend'; 'WinExist' = 'MockWinExist'; 'WinActive' = 'MockWinExist';
     'WinGetPos' = 'MockWinGetPos'; 'XInput_GetState' = 'MockXInput';

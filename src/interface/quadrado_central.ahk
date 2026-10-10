@@ -1,87 +1,89 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 ; Quadrado central colorido do indicador (verde / azul / amarelo / violeta).
 ; So le o tempo (FaltaParaVerdeMs) e o estado dos pedidos; nunca decide nada.
 
-TextoDoQuadradoCentral(&color := unset) {
+; Devolve o texto do quadrado e, em `cor`, a cor de fundo. Um espaco largo mantem o tooltip
+; nativo visivel sem letras ou numeros.
+TextoDoQuadradoCentral(&cor := unset) {
     global FaseAtual, ComboArmado, TrocaArmada
 
-    color := "FFE033"
-    ; Espaço largo mantém o tooltip nativo visível sem letras ou números.
-    square := Chr(0x3000)
+    quadrado := Chr(0x3000)
     if (FaseAtual == "WAITING_FIRST_COMBO") {
-        ; O primeiro combo executa na hora (FaltaParaVerdeMs devolve 0), então
-        ; o indicador tem de dizer o mesmo: verde = apertar agora executa agora.
-        ; Amarelo aqui mentia: parecia "espere" e o botão executava assim mesmo.
-        color := "33CC66"
-        return square
+        ; O primeiro combo executa na hora (FaltaParaVerdeMs devolve 0): o indicador tem de
+        ; dizer o mesmo. Amarelo aqui mentia, parecia "espere" e o botao executava assim mesmo.
+        cor := "33CC66"
+        return quadrado
     }
-
-    ; O relógio continua interno; a interface mostra somente a cor.
-    ; O mesmo cálculo do verde decide o combo antecipado.
-    color := CorDoQuadrado(FaltaParaVerdeMs(), FaseAtual,
-        ComboArmado || TrocaArmada)
-    return square
+    cor := CorDoQuadrado(FaltaParaVerdeMs(), FaseAtual, ComboArmado || TrocaArmada)
+    return quadrado
 }
 
-CorDoQuadrado(pendingMs, state, armed := false) {
-    if (pendingMs <= 0)
-        return "33CC66" ; Verde com cerca de 80% de intensidade.
-    if (armed)
-        return "B266FF" ; Violeta: pedido armado, executa sozinho ao ficar verde.
-    if (state == "WAITING_COMBO" && pendingMs <= 10000)
-        return "33A3FF" ; Azul nos últimos 10 segundos de espera do tank.
-    return "FFE033" ; Amarelo com cerca de 80% de intensidade por padrão.
+; A cor diz exatamente o que o botao vai fazer: verde executa na hora; violeta ja tem pedido
+; armado; azul faltam <= 10 s no COMBAR; amarelo e o demais da espera.
+CorDoQuadrado(faltaMs, fase, armado := false) {
+    if (faltaMs <= 0)
+        return "33CC66"
+    if (armado)
+        return "B266FF"
+    if (fase == "WAITING_COMBO" && faltaMs <= 10000)
+        return "33A3FF"
+    return "FFE033"
 }
 
-DesenharQuadradoCentral(text := "", x := 0, y := 0, color := "FFE033") {
-    static lastHwnd := 0, lastColor := ""
-    static lastText := "", lastX := 0, lastY := 0
-    if (text == "") {
-        if lastHwnd
+; Desenha (ou atualiza) o quadrado. `texto` vazio apaga. So repinta quando a cor muda.
+DesenharQuadradoCentral(texto := "", x := 0, y := 0, cor := "FFE033") {
+    static ultimoHwnd := 0, ultimaCor := ""
+    static ultimoTexto := "", ultimoX := 0, ultimoY := 0
+    if (texto == "") {
+        if ultimoHwnd
             ToolTip(, , , 2)
-        lastHwnd := 0
-        lastColor := ""
-        lastText := ""
+        ultimoHwnd := 0
+        ultimaCor := ""
+        ultimoTexto := ""
         return
     }
 
-    hwnd := lastHwnd
+    hwnd := ultimoHwnd
     if (!hwnd || !DllCall("IsWindow", "Ptr", hwnd)) {
-        hwnd := ToolTip(text, x, y, 2)
+        hwnd := ToolTip(texto, x, y, 2)
         ; O controle nativo precisa liberar o tema para aceitar a cor de fundo.
         DllCall("UxTheme\SetWindowTheme", "Ptr", hwnd, "Str", "", "Str", "", "Int")
         SendMessage(0x414, 0x000000, 0, , hwnd) ; TTM_SETTIPTEXTCOLOR: preto.
-        ; Recalcular após a troca do tema, antes de medir o tamanho natural.
-        ToolTip(text, x, y, 2)
-        WinGetPos(, , &naturalWidth, &naturalHeight, hwnd)
-        margin := Buffer(16, 0)
-        SendMessage(0x41B, 0, margin.Ptr, , hwnd) ; TTM_GETMARGIN.
-        extraX := Max(0, 30 - naturalWidth)
-        extraY := Max(0, 30 - naturalHeight)
-        NumPut("Int", NumGet(margin, 0, "Int") + extraX // 2, margin, 0)
-        NumPut("Int", NumGet(margin, 4, "Int") + extraY // 2, margin, 4)
-        NumPut("Int", NumGet(margin, 8, "Int") + extraX - extraX // 2, margin, 8)
-        NumPut("Int", NumGet(margin, 12, "Int") + extraY - extraY // 2, margin, 12)
-        SendMessage(0x41A, 0, margin.Ptr, , hwnd) ; TTM_SETMARGIN: área visível quadrada.
-        ToolTip(text, x, y, 2)
-        lastHwnd := hwnd
-        lastColor := ""
-        lastText := text
-        lastX := x
-        lastY := y
-    } else if (text != lastText || x != lastX || y != lastY) {
-        ; Reposicionar somente se a janela do jogo mudar de lugar.
-        ToolTip(text, x, y, 2)
-        lastText := text
-        lastX := x
-        lastY := y
+        ; Redesenha depois da troca do tema, antes de medir o tamanho natural.
+        ToolTip(texto, x, y, 2)
+        TornarTooltipQuadrado(hwnd)
+        ToolTip(texto, x, y, 2)
+        ultimoHwnd := hwnd
+        ultimaCor := ""
+        ultimoTexto := texto
+        ultimoX := x
+        ultimoY := y
+    } else if (texto != ultimoTexto || x != ultimoX || y != ultimoY) {
+        ; Reposiciona so se a janela do jogo mudar de lugar.
+        ToolTip(texto, x, y, 2)
+        ultimoTexto := texto
+        ultimoX := x
+        ultimoY := y
     }
-    ; A contagem segue a cada frame; o indicador só repinta ao mudar de cor.
-    if (color != lastColor) {
-        rgb := Integer("0x" color)
+    if (cor != ultimaCor) {
+        rgb := Integer("0x" cor)
         bgr := ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF)
         SendMessage(0x413, bgr, 0, , hwnd) ; TTM_SETTIPBKCOLOR.
         WinRedraw(hwnd)
-        lastColor := color
+        ultimaCor := cor
     }
+}
+
+; Aumenta as margens do tooltip ate a area visivel ficar quadrada (minimo 30 x 30).
+TornarTooltipQuadrado(hwnd) {
+    WinGetPos(, , &larguraNatural, &alturaNatural, hwnd)
+    margem := Buffer(16, 0)
+    SendMessage(0x41B, 0, margem.Ptr, , hwnd) ; TTM_GETMARGIN.
+    extraX := Max(0, 30 - larguraNatural)
+    extraY := Max(0, 30 - alturaNatural)
+    NumPut("Int", NumGet(margem, 0, "Int") + extraX // 2, margem, 0)
+    NumPut("Int", NumGet(margem, 4, "Int") + extraY // 2, margem, 4)
+    NumPut("Int", NumGet(margem, 8, "Int") + extraX - extraX // 2, margem, 8)
+    NumPut("Int", NumGet(margem, 12, "Int") + extraY - extraY // 2, margem, 12)
+    SendMessage(0x41A, 0, margem.Ptr, , hwnd) ; TTM_SETMARGIN.
 }

@@ -41,7 +41,7 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | `macro/rodizio_222.ahk` | rodizio do modo 2-2-2 (registra cast e chamada no `tempo`) |
 | `macro/antecipacao*.ahk` | combo e troca armados (verde automatico) e emergencia (duplo clique) |
 | `macro/modos.ahk` | `TrocarModo` e `Resincronizar` (F8) |
-| `macro/acoes.ahk` | acao de cada botao conforme o modo (`Acao_*`) |
+| `macro/acoes.ahk` | acao de cada botao conforme o modo (`Acao*`) |
 | `interface/controle.ahk` | laco de 30 ms: XInput, movimento, botoes -> acoes |
 | `interface/painel.ahk` | tooltip de texto e orquestracao da interface |
 | `interface/quadrado_central.ahk` | quadrado colorido (verde / azul / amarelo / violeta) |

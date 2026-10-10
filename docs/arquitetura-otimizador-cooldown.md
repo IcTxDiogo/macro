@@ -186,7 +186,7 @@ O estado já decorrido nunca é reconstruído: é acumulado.
 
 Implementado em `src/tempo` e coberto pela suíte de testes (`tests/`).
 
-- **Reaproveitado:** o acumulador preguiçoso por slot (`Hoenn222Cd*`), o mapeamento tier → CD,
+- **Reaproveitado:** o acumulador preguiçoso por slot (`CooldownRestanteMs`, `AtualizarCooldown`), o mapeamento tier → CD,
   o `PlanejarVolta()` com cache, o cancelamento de pedido armado e o fallback para os alvos fixos.
 - **Descartado:** `PrepareMs` artificial e a extensão dinâmica da espera interna do
   secundário. Os intervalos são `SleepAfterTankCombo` e `SleepAfterSwitch`, os valores originais.

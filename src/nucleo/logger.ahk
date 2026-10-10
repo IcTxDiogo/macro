@@ -1,64 +1,64 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
+; Dois logs independentes:
+;   - diagnostico (%TEMP%\macro_switch_debug.log): eventos tecnicos; nunca bloqueia um comando;
+;   - sessao (logs\farm_log_*.txt): combos e trocas de time, para o jogador.
 
-global LogFolder := A_ScriptDir "\logs"
-
-; Diagnóstico temporário e independente do logger de sessões.
+global PastaDeLogs := A_ScriptDir "\logs"
 global DiagnosticoAtivo := true
 global ArquivoDiagnostico := A_Temp "\macro_switch_debug.log"
 
-LogDiagnostico(event, details := "", err := 0) {
+; Escreve uma linha no diagnostico. Qualquer falha (arquivo indisponivel, formatacao) e
+; ignorada: o log nunca pode impedir uma acao do macro.
+LogDiagnostico(evento, detalhes := "", erro := 0) {
     global DiagnosticoAtivo, ArquivoDiagnostico
     try {
         if !DiagnosticoAtivo
             return
-        if IsObject(err) {
-            details .= " message=" err.Message " function=" err.What " line=" err.Line " file=" err.File
-        }
-        details := StrReplace(StrReplace(details, "`r", " "), "`n", " ")
+        if IsObject(erro)
+            detalhes .= " message=" erro.Message " function=" erro.What " line=" erro.Line " file=" erro.File
+        detalhes := StrReplace(StrReplace(detalhes, "`r", " "), "`n", " ")
         FileAppend(FormatTime(, "yyyy-MM-dd HH:mm:ss") " tick=" A_TickCount " pid=" ProcessExist()
-            " | " event " | " details "`n", ArquivoDiagnostico, "UTF-8")
+            " | " evento " | " detalhes "`n", ArquivoDiagnostico, "UTF-8")
     } catch {
-        ; Nem arquivo indisponível, nem formatação do diagnóstico podem bloquear comandos.
     }
 }
 
 try {
-    if !DirExist(LogFolder)
-        DirCreate(LogFolder)
+    if !DirExist(PastaDeLogs)
+        DirCreate(PastaDeLogs)
 } catch as e {
     LogDiagnostico("SWITCH_ERROR", "phase=logger_init", e)
 }
 
-global CurrentSessionLogFile := LogFolder "\farm_log_" FormatTime(, "yyyy-MM-dd_HH-mm-ss") ".txt"
+global ArquivoDoLogDaSessao := PastaDeLogs "\farm_log_" FormatTime(, "yyyy-MM-dd_HH-mm-ss") ".txt"
+global InicioDoComboTick := 0
+global TimeDoUltimoCombo := 0
 
-RegistrarNoLog(message) {
-    global CurrentSessionLogFile
+RegistrarNoLog(mensagem) {
+    global ArquivoDoLogDaSessao
     try {
-        currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
-        FileAppend(currentTime " | " message "`n", CurrentSessionLogFile)
+        FileAppend(FormatTime(, "yyyy-MM-dd HH:mm:ss") " | " mensagem "`n", ArquivoDoLogDaSessao)
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=session_logger", e)
     }
 }
 
-global StartComboTick := 0
-global CurrentLogTime := 0
-
-RegistrarInicioDoCombo(timeNum, modo, origem := "manual") {
-    global StartComboTick, CurrentLogTime
-    StartComboTick := A_TickCount
-    CurrentLogTime := timeNum
-    RegistrarNoLog("COMBO START | Modo: " modo " | Time: " timeNum " | Origem: " origem)
+RegistrarInicioDoCombo(time, modo, origem := "manual") {
+    global InicioDoComboTick, TimeDoUltimoCombo
+    InicioDoComboTick := A_TickCount
+    TimeDoUltimoCombo := time
+    RegistrarNoLog("COMBO START | Modo: " modo " | Time: " time " | Origem: " origem)
 }
 
-RegistrarTrocaNoLog(newTeam, modo) {
-    global StartComboTick, CurrentLogTime
+; Registra a troca (e, se havia combo em andamento, quanto tempo passou desde ele).
+RegistrarTrocaNoLog(novoTime, modo) {
+    global InicioDoComboTick, TimeDoUltimoCombo
 
-    if (StartComboTick > 0) {
-        elapsedSec := Round((A_TickCount - StartComboTick) / 1000, 2)
-        RegistrarNoLog("TEAM END    | Tempo pos-combo (Time " CurrentLogTime "): " elapsedSec "s")
-        StartComboTick := 0
+    if (InicioDoComboTick > 0) {
+        decorridoSeg := Round((A_TickCount - InicioDoComboTick) / 1000, 2)
+        RegistrarNoLog("TEAM END    | Tempo pos-combo (Time " TimeDoUltimoCombo "): " decorridoSeg "s")
+        InicioDoComboTick := 0
     }
 
-    RegistrarNoLog("TEAM SWITCH | Solicitado Time: " newTeam " | Entrada visual: nao confirmada")
+    RegistrarNoLog("TEAM SWITCH | Solicitado Time: " novoTime " | Entrada visual: nao confirmada")
 }

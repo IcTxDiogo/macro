@@ -81,3 +81,14 @@ powershell -File tests\run-live-stall-test.ps1                     # timers reai
 - Refatoracao grande: fazer numa copia (`git clone` no scratchpad), testar e so entao
   `git pull --ff-only` no projeto, para nao quebrar o macro que o jogador esta usando.
 - `git status` deve estar limpo antes de mexer; commits em portugues, `tipo: resumo`.
+
+## Convencoes de nomes (codigo em portugues, sem acento)
+
+- **Funcoes:** verbo no infinitivo + objeto (`PedirCombo`, `RegistrarCast`, `PlanejarVolta`).
+  Consultas dizem o que devolvem e a unidade (`FaltaParaVerdeMs`, `MsAteCastSeguro`).
+- **Estado global:** substantivo do dominio (`FaseAtual`, `ComboArmado`, `CooldownRestanteMs`);
+  instantes terminam em `Tick`, duracoes em `Ms`.
+- **Config:** chaves `Hoenn222_*` e `Key*` em `config.ahk` (nome em ingles, mexe so quem ajusta).
+- **Vocabulario:** `time` = dupla/time 1 a 3; `tank`/`secundario`; `slot` = Pokemon (1 a 6);
+  "verde" = `FaltaParaVerdeMs() <= 0`; "armado" = pedido esperando o verde.
+- **Eventos de log** (`COMBO_FIRED`, `CD_CAST`...) sao contrato com a analise: nao renomear.

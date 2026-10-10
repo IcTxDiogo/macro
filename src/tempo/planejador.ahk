@@ -1,170 +1,115 @@
-﻿#Requires AutoHotkey v2.0
-; Planejador global das tres duplas: menor volta sustentavel e janelas por dupla.
+#Requires AutoHotkey v2.0
+; Planejador das tres duplas: acha a menor volta sustentavel e a janela de cada dupla.
+;
+; MODELO. So um Pokemon fica fora da Ball por vez. Na janela da dupla k:
+;   troca de time ... o tank k SAI da Ball (o secundario continua dentro)
+;   lure ............ o tank espera/puxa fora da Ball; recupera o CD do cast da volta anterior
+;   cast do tank .... T0; o CD novo comeca a contar apos o atraso de cast
+;   chamada ......... T0 + SleepAfterTankCombo: o tank VOLTA para a Ball, o secundario SAI
+;   cast do sec ..... chamada + SleepAfterSwitch
+;   proxima troca ... o secundario volta para a Ball
+;
+; A recuperacao e contada ENTRE DOIS CASTS do mesmo Pokemon. Com F = tempo fora da Ball
+; nesse intervalo e L = volta inteira, fora recupera 1,0 e dentro 0,5:
+;
+;     (F - atrasos) + (L - F) * 0,5  >=  CD + margem
+;     F  >=  2 * (CD + atrasos + margem) - L
+;
+; `atrasos` soma o atraso do cast e o da saida da Ball (tank: Hoenn222_LatencyMs; secundario:
+; Hoenn222_ExitLatencySecondaryMs). Cada janela e lure + SleepAfterTankCombo + F_secundario e as
+; tres somam L; a menor volta que fecha essa soma e achada por bisseccao.
+; O resultado so depende da configuracao, entao fica em cache.
 
-RotuloDoTier(timeIndex, role := "tank") {
+; Rotulo do tier ("SR", "UR"...) do tank ou do secundario ("second") do time. "?" se ausente.
+RotuloDoTier(time, papel := "tank") {
     global Hoenn222_TankTier, Hoenn222_SecondTier
-    timeIndex := Integer(timeIndex)
+    time := Integer(time)
     try {
-        mapaTier := (role == "second") ? Hoenn222_SecondTier : Hoenn222_TankTier
-        return (IsObject(mapaTier) && mapaTier.Has(timeIndex) && mapaTier[timeIndex] != "")
-            ? mapaTier[timeIndex] : "?"
+        tiers := (papel == "second") ? Hoenn222_SecondTier : Hoenn222_TankTier
+        return (IsObject(tiers) && tiers.Has(time) && tiers[time] != "") ? tiers[time] : "?"
     } catch as e {
-        LogDiagnostico("SWITCH_ERROR", "phase=tier_config role=" role " team=" timeIndex, e)
+        LogDiagnostico("SWITCH_ERROR", "phase=tier_config role=" papel " team=" time, e)
         return "?"
     }
 }
 
-; =============================================================================
-; PLANEJADOR GLOBAL DAS TRES DUPLAS
-; =============================================================================
-; Depende so da configuracao, entao o resultado e estavel e fica em cache.
-;
-; -----------------------------------------------------------------------------
-; MODELO
-; -----------------------------------------------------------------------------
-; Só um Pokémon fica fora da Ball por vez. Dentro da janela da dupla k:
-;
-;   s_k ........... troca de time; o tank k SAI da Ball, o secundário continua
-;                   dentro. A partir daqui é o tank que recupera, e o CD que
-;                   ele recupera é o que começou no cast da volta ANTERIOR.
-;   T0_k .......... cast do tank; o CD novo passa a contar em T0_k + Λ
-;   T1_k = T0_k + P chamada do p2; o tank VOLTA para a Ball, o secundário SAI
-;   T2_k = T1_k + G cast do secundário; CD conta a partir de T2_k + Λ
-;   s_(k+1) ....... próxima troca; o secundário volta para a Ball
-;
-; Capacidade conjunta da volta: 1 a 1,0 + 5 a 0,5 = 3,5. Nunca mais que isso.
-;
-; -----------------------------------------------------------------------------
-; PRINCÍPIO: a recuperação é contada ENTRE DOIS CASTS CONSECUTIVOS
-; -----------------------------------------------------------------------------
-; O cooldown do Pokémon na volta k nasce em T0_k e precisa zerar antes do
-; próximo T0. Nesse intervalo inteiro ele recupera, e cada segundo conta onde
-; quer que aconteça:
-;
-;   * logo depois do cast, ainda fora da Ball (1,0×)
-;   * guardado no meio da volta, dentro da Ball (0,5×)
-;   * na volta seguinte, de novo fora, durante o lure ANTES do próximo cast
-;
-; O lure não é tempo perdido: ele recupera o cooldown que começou no cast
-; anterior. F = tempo total fora da Ball entre dois casts consecutivos.
-;
-;     recuperação = (F - Λ)·1,0 + (L - F)·0,5
-;     (F - Λ) porque os congelamentos ficam DENTRO do primeiro trecho fora
-;
-;     (F - Λ) + (L - F)·0,5  >=  CD + Δ
-;     F  >=  2·(CD + Λ + Δ) − L
-;
-; Λ soma dois atrasos físicos: o do início do CD depois do cast (Hoenn222_LatencyMs) e o
-; da saída da Ball (Hoenn222_LatencyMs na troca de time do tank; no secundário,
-; Hoenn222_ExitLatencySecondaryMs). O CD não corre durante o congelamento.
-; Δ (Hoenn222_MarginMs) é a folga exigida no próximo cast.
-;
-; -----------------------------------------------------------------------------
-; QUEM PODE FICAR FORA, E QUANTO
-; -----------------------------------------------------------------------------
-; O tank só existe fora da Ball dentro da SUA janela, da troca até a chamada
-; do p2. Esse tempo é lure_k + P. Fora da janela ele está guardado, a 0,5.
-;     F_tank_k = lure_k + P        e lure_k >= 0
-;
-; O secundário fica fora de T1_k até a próxima troca, e precisa comportar
-; Gap + SleepAfterCombo:
-;     F_sec_k = janela_k − lure_k − P   e janela_k − lure_k − P >= Gap + Post
-;
-; -----------------------------------------------------------------------------
-; COMO AS TRÊS PARCELAS FECHAM
-; -----------------------------------------------------------------------------
-;     janela_k = lure_k + P + F_sec_k
-;     L = janela_1 + janela_2 + janela_3
-;
-; Cada janela é o que o tank e o secundário daquele par exigem, então as três
-; janelas têm tamanhos diferentes. O menor L que fecha essa soma é a volta
-; mínima sustentável — e ele coincide com o piso 3,5× quando a estrutura couber.
-;
+; Plano: {L, Janelas[], Lures[], TankFora[], SecFora[], FolgaLure, JanelaMinima, MargemEfetiva},
+; tudo em ms e indexado por time (1 a 3).
 PlanejarVolta() {
-    global PlanoEmCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
-    global Hoenn222_ExitLatencySecondaryMs
+    global PlanoEmCache, Hoenn222_LatencyMs, Hoenn222_MarginMs, Hoenn222_ExitLatencySecondaryMs
 
     if PlanoEmCache
         return PlanoEmCache
 
-    lat := Hoenn222_LatencyMs
-    marg := Hoenn222_MarginMs
-    ; Cada Pokemon perde dois atrasos por intervalo entre casts: o da saida da Ball
-    ; (troca de time para o tank, chamada do p2 para o secundario) e o do inicio do CD
-    ; novo (o cast). O cast tem o mesmo atraso nos dois papeis; a saida do secundario
-    ; tem o proprio (Hoenn222_ExitLatencySecondaryMs).
-    margemEfetiva := 2 * lat + marg
-    margemSec := lat + Hoenn222_ExitLatencySecondaryMs + marg
-    Pp := SleepAfterTankCombo
-    minSec := SleepAfterSwitch + SleepAfterCombo   ; secundário precisa ficar fora até a troca
+    atrasoMs := Hoenn222_LatencyMs
+    margemMs := Hoenn222_MarginMs
+    margemTankMs := 2 * atrasoMs + margemMs                                         ; cast + saida do tank
+    margemSecMs := atrasoMs + Hoenn222_ExitLatencySecondaryMs + margemMs            ; cast + saida do secundario
+    castAteChamadaMs := SleepAfterTankCombo
+    secForaMinimoMs := SleepAfterSwitch + SleepAfterCombo                           ; fica fora ate a troca
 
     cdTank := [CooldownBaseMs(1, false), CooldownBaseMs(2, false), CooldownBaseMs(3, false)]
     cdSec := [CooldownBaseMs(1, true), CooldownBaseMs(2, true), CooldownBaseMs(3, true)]
+
     ; Pisos de conforto do config: o que o jogador precisa alem do cooldown.
-    ; O tank fica fora ao menos P + lure minimo; o secundario ao menos o piso dele.
-    pisoTank := [Pp + PisoDoConfigMs("Hoenn222_MinLureMs", 1), Pp + PisoDoConfigMs("Hoenn222_MinLureMs", 2), Pp + PisoDoConfigMs("Hoenn222_MinLureMs", 3)]
-    pisoSec := [Max(minSec, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", 1)), Max(minSec, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", 2)), Max(minSec, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", 3))]
-
-    ; Soma das janelas em função de L. Diminui quando L cresce (CD maior exige
-    ; menos tempo fora), então a condição "soma <= L" vale a partir de um
-    ; único ponto. Bisseção acha o menor L que fecha.
-    minJanelas := Pp + minSec
-    lo := minJanelas * 3
-    ; Com pisos o menor L possivel nunca fica abaixo da soma deles.
-    somaPisos := pisoTank[1] + pisoTank[2] + pisoTank[3] + pisoSec[1] + pisoSec[2] + pisoSec[3]
-    lo := Max(lo, somaPisos)
-    hi := 500000.0
-    while (hi - lo > 0.01) {
-        meio := (lo + hi) / 2
-        total := 0.0
-        timeIndex := 1
-        while timeIndex <= 3 {
-            total += Max(pisoTank[timeIndex], 2 * (cdTank[timeIndex] + margemEfetiva) - meio)
-            total += Max(pisoSec[timeIndex], 2 * (cdSec[timeIndex] + margemSec) - meio)
-            timeIndex += 1
-        }
-        if (total <= meio)
-            hi := meio
-        else
-            lo := meio
+    pisoTank := []
+    pisoSec := []
+    loop 3 {
+        pisoTank.Push(castAteChamadaMs + PisoDoConfigMs("Hoenn222_MinLureMs", A_Index))
+        pisoSec.Push(Max(secForaMinimoMs, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", A_Index)))
     }
-    L := hi
 
-    ; Janelas e lure finais nesse L.
+    ; A soma das janelas diminui quando L cresce (CD maior exige menos tempo fora), entao
+    ; "soma <= L" vale a partir de um unico ponto: bisseccao.
+    janelaMinimaMs := castAteChamadaMs + secForaMinimoMs
+    somaPisos := pisoTank[1] + pisoTank[2] + pisoTank[3] + pisoSec[1] + pisoSec[2] + pisoSec[3]
+    inferior := Max(janelaMinimaMs * 3, somaPisos)
+    superior := 500000.0
+    while (superior - inferior > 0.01) {
+        meio := (inferior + superior) / 2
+        soma := 0.0
+        loop 3 {
+            soma += Max(pisoTank[A_Index], 2 * (cdTank[A_Index] + margemTankMs) - meio)
+            soma += Max(pisoSec[A_Index], 2 * (cdSec[A_Index] + margemSecMs) - meio)
+        }
+        if (soma <= meio)
+            superior := meio
+        else
+            inferior := meio
+    }
+    voltaMs := superior
+
     janelas := [0.0, 0.0, 0.0]
     lures := [0.0, 0.0, 0.0]
     tankFora := [0.0, 0.0, 0.0]
     secFora := [0.0, 0.0, 0.0]
     folgaLure := 0.0
-    timeIndex := 1
-    while timeIndex <= 3 {
-        tankFora[timeIndex] := Max(pisoTank[timeIndex], 2 * (cdTank[timeIndex] + margemEfetiva) - L)
-        secFora[timeIndex] := Max(pisoSec[timeIndex], 2 * (cdSec[timeIndex] + margemSec) - L)
-        lures[timeIndex] := tankFora[timeIndex] - Pp
-        janelas[timeIndex] := lures[timeIndex] + Pp + secFora[timeIndex]
-        folgaLure += lures[timeIndex]
-        timeIndex += 1
+    loop 3 {
+        tankFora[A_Index] := Max(pisoTank[A_Index], 2 * (cdTank[A_Index] + margemTankMs) - voltaMs)
+        secFora[A_Index] := Max(pisoSec[A_Index], 2 * (cdSec[A_Index] + margemSecMs) - voltaMs)
+        lures[A_Index] := tankFora[A_Index] - castAteChamadaMs
+        janelas[A_Index] := lures[A_Index] + castAteChamadaMs + secFora[A_Index]
+        folgaLure += lures[A_Index]
     }
 
-    ; Object literal em UMA linha: este build do AutoHotkey nao aceita
-    ; literais multi-linha.
-    PlanoEmCache := {L: L, Janelas: janelas, Lures: lures, TankFora: tankFora, SecFora: secFora, FolgaLure: folgaLure, JanelaMinima: minJanelas, MargemEfetiva: margemEfetiva}
-    LogDiagnostico("CD_PLAN", "L=" Round(L)
+    ; Literal de objeto em UMA linha: este build do AutoHotkey nao aceita multilinha.
+    PlanoEmCache := {L: voltaMs, Janelas: janelas, Lures: lures, TankFora: tankFora, SecFora: secFora, FolgaLure: folgaLure, JanelaMinima: janelaMinimaMs, MargemEfetiva: margemTankMs}
+    LogDiagnostico("CD_PLAN", "L=" Round(voltaMs)
         " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3])
         " lure=" Round(lures[1]) "," Round(lures[2]) "," Round(lures[3])
         " tank_fora=" Round(tankFora[1]) "," Round(tankFora[2]) "," Round(tankFora[3])
         " sec_fora=" Round(secFora[1]) "," Round(secFora[2]) "," Round(secFora[3])
-        " pos_cast=" Pp " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
-        " latencia=" lat " saida_sec=" Hoenn222_ExitLatencySecondaryMs " margem=" marg)
+        " pos_cast=" castAteChamadaMs " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
+        " latencia=" atrasoMs " saida_sec=" Hoenn222_ExitLatencySecondaryMs " margem=" margemMs)
     return PlanoEmCache
 }
 
 ; Piso de conforto por dupla lido do config (Map nome -> time). Ausente, negativo ou
 ; invalido vale 0 e nunca derruba o planejador.
-PisoDoConfigMs(nomeMapa, timeIndex) {
+PisoDoConfigMs(nomeMapa, time) {
     try {
         mapa := %nomeMapa%
-        valor := (IsObject(mapa) && mapa.Has(timeIndex)) ? mapa[timeIndex] : 0
+        valor := (IsObject(mapa) && mapa.Has(time)) ? mapa[time] : 0
         return (IsNumber(valor) && valor > 0) ? valor : 0
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=min_config map=" nomeMapa, e)
