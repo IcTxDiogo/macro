@@ -1,7 +1,7 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Planejador global das tres duplas: menor volta sustentavel e janelas por dupla.
 
-GetHoenn222TierText(timeIndex, role := "tank") {
+RotuloDoTier(timeIndex, role := "tank") {
     global Hoenn222_TankTier, Hoenn222_SecondTier
     timeIndex := Integer(timeIndex)
     try {
@@ -9,7 +9,7 @@ GetHoenn222TierText(timeIndex, role := "tank") {
         return (IsObject(mapaTier) && mapaTier.Has(timeIndex) && mapaTier[timeIndex] != "")
             ? mapaTier[timeIndex] : "?"
     } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=tier_config role=" role " team=" timeIndex, e)
+        LogDiagnostico("SWITCH_ERROR", "phase=tier_config role=" role " team=" timeIndex, e)
         return "?"
     }
 }
@@ -80,12 +80,12 @@ GetHoenn222TierText(timeIndex, role := "tank") {
 ; janelas têm tamanhos diferentes. O menor L que fecha essa soma é a volta
 ; mínima sustentável — e ele coincide com o piso 3,5× quando a estrutura couber.
 ;
-PlanHoenn222() {
-    global Hoenn222_PlanCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
+PlanejarVolta() {
+    global PlanoEmCache, Hoenn222_LatencyMs, Hoenn222_MarginMs
     global Hoenn222_ExitLatencySecondaryMs
 
-    if Hoenn222_PlanCache
-        return Hoenn222_PlanCache
+    if PlanoEmCache
+        return PlanoEmCache
 
     lat := Hoenn222_LatencyMs
     marg := Hoenn222_MarginMs
@@ -98,12 +98,12 @@ PlanHoenn222() {
     Pp := SleepAfterTankCombo
     minSec := SleepAfterSwitch + SleepAfterCombo   ; secundário precisa ficar fora até a troca
 
-    cdTank := [GetHoenn222CdMainMs(1, false), GetHoenn222CdMainMs(2, false), GetHoenn222CdMainMs(3, false)]
-    cdSec := [GetHoenn222CdMainMs(1, true), GetHoenn222CdMainMs(2, true), GetHoenn222CdMainMs(3, true)]
+    cdTank := [CooldownBaseMs(1, false), CooldownBaseMs(2, false), CooldownBaseMs(3, false)]
+    cdSec := [CooldownBaseMs(1, true), CooldownBaseMs(2, true), CooldownBaseMs(3, true)]
     ; Pisos de conforto do config: o que o jogador precisa alem do cooldown.
     ; O tank fica fora ao menos P + lure minimo; o secundario ao menos o piso dele.
-    pisoTank := [Pp + Hoenn222MinFromConfig("Hoenn222_MinLureMs", 1), Pp + Hoenn222MinFromConfig("Hoenn222_MinLureMs", 2), Pp + Hoenn222MinFromConfig("Hoenn222_MinLureMs", 3)]
-    pisoSec := [Max(minSec, Hoenn222MinFromConfig("Hoenn222_MinSecondaryOutMs", 1)), Max(minSec, Hoenn222MinFromConfig("Hoenn222_MinSecondaryOutMs", 2)), Max(minSec, Hoenn222MinFromConfig("Hoenn222_MinSecondaryOutMs", 3))]
+    pisoTank := [Pp + PisoDoConfigMs("Hoenn222_MinLureMs", 1), Pp + PisoDoConfigMs("Hoenn222_MinLureMs", 2), Pp + PisoDoConfigMs("Hoenn222_MinLureMs", 3)]
+    pisoSec := [Max(minSec, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", 1)), Max(minSec, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", 2)), Max(minSec, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", 3))]
 
     ; Soma das janelas em função de L. Diminui quando L cresce (CD maior exige
     ; menos tempo fora), então a condição "soma <= L" vale a partir de um
@@ -148,26 +148,26 @@ PlanHoenn222() {
 
     ; Object literal em UMA linha: este build do AutoHotkey nao aceita
     ; literais multi-linha.
-    Hoenn222_PlanCache := {L: L, Janelas: janelas, Lures: lures, TankFora: tankFora, SecFora: secFora, FolgaLure: folgaLure, JanelaMinima: minJanelas, MargemEfetiva: margemEfetiva}
-    SwitchDebug("CD_PLAN", "L=" Round(L)
+    PlanoEmCache := {L: L, Janelas: janelas, Lures: lures, TankFora: tankFora, SecFora: secFora, FolgaLure: folgaLure, JanelaMinima: minJanelas, MargemEfetiva: margemEfetiva}
+    LogDiagnostico("CD_PLAN", "L=" Round(L)
         " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3])
         " lure=" Round(lures[1]) "," Round(lures[2]) "," Round(lures[3])
         " tank_fora=" Round(tankFora[1]) "," Round(tankFora[2]) "," Round(tankFora[3])
         " sec_fora=" Round(secFora[1]) "," Round(secFora[2]) "," Round(secFora[3])
         " pos_cast=" Pp " gap=" SleepAfterSwitch " pos=" SleepAfterCombo
         " latencia=" lat " saida_sec=" Hoenn222_ExitLatencySecondaryMs " margem=" marg)
-    return Hoenn222_PlanCache
+    return PlanoEmCache
 }
 
 ; Piso de conforto por dupla lido do config (Map nome -> time). Ausente, negativo ou
 ; invalido vale 0 e nunca derruba o planejador.
-Hoenn222MinFromConfig(nomeMapa, timeIndex) {
+PisoDoConfigMs(nomeMapa, timeIndex) {
     try {
         mapa := %nomeMapa%
         valor := (IsObject(mapa) && mapa.Has(timeIndex)) ? mapa[timeIndex] : 0
         return (IsNumber(valor) && valor > 0) ? valor : 0
     } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=min_config map=" nomeMapa, e)
+        LogDiagnostico("SWITCH_ERROR", "phase=min_config map=" nomeMapa, e)
         return 0
     }
 }

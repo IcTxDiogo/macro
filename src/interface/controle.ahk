@@ -21,12 +21,12 @@ GameLoop() {
     ; Diagnostico: registra quando o laco ficou parado (movimento congelado).
     agoraTick := A_TickCount
     if (ultimoTick > 0 && agoraTick - ultimoTick > 400)
-        SwitchDebug("LOOP_STALL", "gap_ms=" (agoraTick - ultimoTick) " state=" Hoenn222_State " rodizio=" isRodizioAtivo)
+        LogDiagnostico("LOOP_STALL", "gap_ms=" (agoraTick - ultimoTick) " state=" FaseAtual " rodizio=" RodizioAtivo)
     ultimoTick := agoraTick
 
     State := XInput_GetState(0)
     if !State {
-        AtualizarTooltipsControle(false)
+        AtualizarInterface(false)
         return
     }
 
@@ -34,20 +34,20 @@ GameLoop() {
     if (isGameActive)
         AtualizarMovimento(State)
     DespacharBotoes(State, isGameActive)
-    ProcessarAcoesArmadas()
-    AtualizarTooltipsControle()
+    VerificarPedidosArmados()
+    AtualizarInterface()
 }
 
 ; Analogico -> WASD. Cada tecla so e enviada quando o estado muda.
 AtualizarMovimento(State) {
     static ativo := Map("w", false, "s", false, "a", false, "d", false)
-    AplicarTecla("w", State.sThumbLY > DeadzoneMove || State.sThumbRY > DeadzoneMove, ativo)
-    AplicarTecla("s", State.sThumbLY < -DeadzoneMove || State.sThumbRY < -DeadzoneMove, ativo)
-    AplicarTecla("a", State.sThumbLX < -DeadzoneMove || State.sThumbRX < -DeadzoneMove, ativo)
-    AplicarTecla("d", State.sThumbLX > DeadzoneMove || State.sThumbRX > DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("w", State.sThumbLY > DeadzoneMove || State.sThumbRY > DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("s", State.sThumbLY < -DeadzoneMove || State.sThumbRY < -DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("a", State.sThumbLX < -DeadzoneMove || State.sThumbRX < -DeadzoneMove, ativo)
+    AplicarTeclaDeMovimento("d", State.sThumbLX > DeadzoneMove || State.sThumbRX > DeadzoneMove, ativo)
 }
 
-AplicarTecla(tecla, deveEstarAtiva, ativo) {
+AplicarTeclaDeMovimento(tecla, deveEstarAtiva, ativo) {
     if (deveEstarAtiva) {
         if !ativo[tecla] {
             ControlSend("{" tecla " down}", , GameWindow)
@@ -64,21 +64,21 @@ DespacharBotoes(State, isGameActive) {
     static pressionados := Map()
     b := State.wButtons
 
-    DisparoUnico(pressionados, "Triggers", (State.bRightTrigger > 200 || State.bLeftTrigger > 200) && isGameActive,
-        () => Acao_Gatilhos("controller"))
-    DisparoUnico(pressionados, "Bumpers", (b & 0x0100 || b & 0x0200) && isGameActive, Acao_Bumpers)
-    DisparoUnico(pressionados, "FaceDown", (b & 0x1000 || b & 0x0002) && isGameActive, Acao_FaceDown)    ; A / DPad baixo
-    DisparoUnico(pressionados, "FaceRight", (b & 0x4000 || b & 0x0008) && isGameActive, Acao_FaceRight)  ; X / DPad direita
-    DisparoUnico(pressionados, "FaceLeft", (b & 0x2000 || b & 0x0004) && isGameActive, Acao_FaceLeft)    ; B / DPad esquerda
-    DisparoUnico(pressionados, "FaceUp", (b & 0x8000 || b & 0x0001) && isGameActive, Acao_FaceUp)        ; Y / DPad cima
-    DisparoUnico(pressionados, "LeftThumb", (b & 0x0040) && isGameActive, Acao_LeftThumb)
-    DisparoUnico(pressionados, "RightThumb", (b & 0x0080) && isGameActive, Acao_RightThumb)
-    DisparoUnico(pressionados, "Start", (b & 0x0010) && isGameActive, InterruptAndReload)               ; reinicia o macro
-    DisparoUnico(pressionados, "Back", (b & 0x0020) && isGameActive, TrocarModo)                         ; troca de modo
+    DispararUmaVez(pressionados, "Triggers", (State.bRightTrigger > 200 || State.bLeftTrigger > 200) && isGameActive,
+        () => AcaoGatilhos("controller"))
+    DispararUmaVez(pressionados, "Bumpers", (b & 0x0100 || b & 0x0200) && isGameActive, AcaoBumpers)
+    DispararUmaVez(pressionados, "FaceDown", (b & 0x1000 || b & 0x0002) && isGameActive, AcaoFaceDown)    ; A / DPad baixo
+    DispararUmaVez(pressionados, "FaceRight", (b & 0x4000 || b & 0x0008) && isGameActive, AcaoFaceRight)  ; X / DPad direita
+    DispararUmaVez(pressionados, "FaceLeft", (b & 0x2000 || b & 0x0004) && isGameActive, AcaoFaceLeft)    ; B / DPad esquerda
+    DispararUmaVez(pressionados, "FaceUp", (b & 0x8000 || b & 0x0001) && isGameActive, AcaoFaceUp)        ; Y / DPad cima
+    DispararUmaVez(pressionados, "LeftThumb", (b & 0x0040) && isGameActive, AcaoLeftThumb)
+    DispararUmaVez(pressionados, "RightThumb", (b & 0x0080) && isGameActive, AcaoRightThumb)
+    DispararUmaVez(pressionados, "Start", (b & 0x0010) && isGameActive, ReiniciarMacro)               ; reinicia o macro
+    DispararUmaVez(pressionados, "Back", (b & 0x0020) && isGameActive, TrocarModo)                         ; troca de modo
 }
 
 ; Agenda `acao` uma unica vez enquanto o botao estiver pressionado; soltar re-arma.
-DisparoUnico(pressionados, nome, ativo, acao) {
+DispararUmaVez(pressionados, nome, ativo, acao) {
     if (ativo) {
         if !pressionados.Has(nome) {
             SetTimer(acao, -1)
@@ -91,15 +91,15 @@ DisparoUnico(pressionados, nome, ativo, acao) {
 
 ; Pedidos antecipados (combo e troca armados). Sao acoes do modo, nao da interface:
 ; ficam fora do bloco de renderizacao para nunca serem perdidos por falha de tooltip.
-ProcessarAcoesArmadas() {
+VerificarPedidosArmados() {
     try {
-        ProcessarComboArmadoHoenn222()
+        VerificarComboArmado()
     } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=combo_armed", e)
+        LogDiagnostico("SWITCH_ERROR", "phase=combo_armed", e)
     }
     try {
-        ProcessarTrocaArmadaHoenn222()
+        VerificarTrocaArmada()
     } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=switch_armed", e)
+        LogDiagnostico("SWITCH_ERROR", "phase=switch_armed", e)
     }
 }

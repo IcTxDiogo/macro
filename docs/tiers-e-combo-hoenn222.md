@@ -33,7 +33,7 @@ otimizador lançar exceção, o macro volta a eles em vez de travar.
 
 ## 2. Botão de combo: normal, antecipado e emergência
 
-`Acao_Bumpers()` chama `SolicitarComboHoenn222()` no modo 2-2-2. Ela classifica
+`AcaoBumpers()` chama `PedirCombo()` no modo 2-2-2. Ela classifica
 a pressão e age em uma das três saídas:
 
 | Caso | Entrada | Resultado |
@@ -48,7 +48,7 @@ invisível.
 ### Duplo acionamento
 
 A detecção é por tempo entre duas pressões do mesmo botão, medida em
-`A_TickCount` na entrada de `SolicitarComboHoenn222()`. Ela não depende de
+`A_TickCount` na entrada de `PedirCombo()`. Ela não depende de
 thread, timer ou estado anterior, então funciona igual para `XButton1` e para
 os bumpers do controle (ambos já geram um evento por transição de solto para
 pressionado).
@@ -61,8 +61,8 @@ pedido antecipado.
 ### Gatilho de troca de time (LT/RT e XButton2)
 
 A mesma regra vale para o outro movimento do ciclo, a troca para o próximo time.
-`Acao_Gatilhos()` chama `SolicitarTrocaHoenn222()`; o verde é o do estado
-`TROCAR TIME`, lido do mesmo `GetHoenn222PendingMs()`.
+`AcaoGatilhos()` chama `PedirTrocaDeTime()`; o verde é o do estado
+`TROCAR TIME`, lido do mesmo `FaltaParaVerdeMs()`.
 
 | Fase | Pressão | Resultado |
 | --- | --- | --- |
@@ -89,7 +89,7 @@ Ao ligar o macro ou depois do F8, os seis Pokémon estão com o CD pronto. Só p
 cooldown nada obrigaria a esperar: a troca para o time 2 liberava o combo na hora
 (CD zero) e a espera inteira caía de uma vez na volta do time 1. Por isso, enquanto
 um time ainda não fez o primeiro cast do tank depois do F8
-(`Hoenn222_TeamCasted`), o verde do `COMBAR` só acende depois do `lure` planejado,
+(`TankJaCastou`), o verde do `COMBAR` só acende depois do `lure` planejado,
 contado da troca de time. Depois do primeiro cast quem manda é só o cooldown real.
 
 Simulação com as funções de produção (SR/Lendário, SR/UR, SR/UR): combos em
@@ -141,7 +141,7 @@ Agendar com `SetTimer(..., -1)` não bastava: com chamadas lentas no laço
 
 Correção: `Thread("NoTimers")` no início do `GameLoop` (nenhum timer sobe por
 cima dele; as ações começam quando a volta termina), disparo automático em thread
-descartável (`DispararComboArmadoHoenn222`, `DispararTrocaArmadaHoenn222`) e
+descartável (`DispararComboArmado`, `DispararTrocaArmada`) e
 atalhos do mouse agendados como o controle. Regra: **nunca** usar `Critical`,
 `Sleep` ou ação longa direto no `GameLoop`.
 
@@ -155,9 +155,9 @@ creditava o tank novo com recuperação 1,0 desde a tecla da troca. Os casts de 
 saíam ~250 ms otimistas (teste em jogo de 09/10: tanks usados 412–420 ms depois do CD
 estimado zerar, contra 640–4300 ms antes, quando a demora do jogador e o travamento
 escondiam a folga). Agora os seis perdem a latência duas vezes por intervalo entre
-casts (saída da Ball e início do CD novo): `Hoenn222CdTrocaTime` congela o tank novo
+casts (saída da Ball e início do CD novo): `RegistrarTrocaDeTime` congela o tank novo
 por `LatencyMs`, o planejador usa `2·Latency + Margin` para todos e
-`Hoenn222CdReadyInMs` soma o congelamento ainda por vir. Num ciclo perfeito todo cast
+`MsAteCastSeguro` soma o congelamento ainda por vir. Num ciclo perfeito todo cast
 cai a `Margin` + 0–5 ms depois do CD zerado. Custo: a volta do plano sobe 0,2 s.
 
 ### Atraso de saída próprio do secundário (gravação de 09/10 19:39–19:46)
@@ -173,7 +173,7 @@ maior: o tank é recolhido, a Ball abre e a barra do secundário só aparece ~0,
 da tecla.
 
 Agora `Hoenn222_ExitLatencySecondaryMs` (1100 ms) congela o CD do secundário depois da
-chamada (`Hoenn222CdRegistrarChamada`), entra no planejador
+chamada (`RegistrarChamadaDoSecundario`), entra no planejador
 (`margemSec = Latency + ExitLatencySecondary + Margin`), na tolerância do combo
 (`Max(0, SleepAfterSwitch − ExitLatencySecondary) − Margin`) e no pendente do
 secundário. `MarginMs` volta a ser só folga de ruído. Custo medido nos testes: volta do
@@ -181,19 +181,19 @@ plano 76,2 → 76,9 s. O valor 1100 ms vem de 2 falhas em ~14 casts de secundár
 com `CD_CAST`/`CD_ENTRADA` + barra se aparecerem mais falhas.
 ## 3. Garantias
 
-- **Um pedido por vez.** `ComboComplexoHoenn222()` consome o pedido armado
-  junto com a trava `isRodizioAtivo`, dentro de `Critical`. Botão e varredura
+- **Um pedido por vez.** `IniciarRodizio222()` consome o pedido armado
+  junto com a trava `RodizioAtivo`, dentro de `Critical`. Botão e varredura
   nunca passam juntos pelo bloqueio, e a trava só é armada com time válido
-  (1–3) — antes, um time inválido deixava `isRodizioAtivo` travado para sempre.
+  (1–3) — antes, um time inválido deixava `RodizioAtivo` travado para sempre.
 - **Nunca no time errado.** O pedido guarda o time em que foi feito
-  (`Hoenn222_ComboArmedTeam`). A varredura descarta o pedido se o modo ou o
+  (`TimeDoComboArmado`). A varredura descarta o pedido se o modo ou o
   time mudarem, e a troca de time, o F8 e a troca de modo cancelam o pedido
   explicitamente (`reason=team_switch`, `resync`, `mode_change`).
 - **Sem execução concorrente.** O disparo automático agenda o mesmo
   `SetTimer(..., -1)` do combo manual; a validação de time/modo
   `execIdOriginal` já existente continua valendo.
 - **Sem atraso novo.** A varredura roda no laço de 30 ms que já existe e usa
-  o mesmo cálculo do indicador, `GetHoenn222PendingMs()`. Não há sleep, nem
+  o mesmo cálculo do indicador, `FaltaParaVerdeMs()`. Não há sleep, nem
   timer novo, nem polling adicional.
 - **Interface não participa da decisão.** O disparo fica antes do bloco de
   renderização e em `try/catch` próprio, então uma falha de tooltip não come
@@ -204,7 +204,7 @@ com `CD_CAST`/`CD_ENTRADA` + barra se aparecerem mais falhas.
 
 ### Estados alcançados pelo pedido
 
-`GetHoenn222PendingMs()` devolve `0` em `WAITING_FIRST_COMBO`, então o
+`FaltaParaVerdeMs()` devolve `0` em `WAITING_FIRST_COMBO`, então o
 primeiro combo continua imediato, como o F8 espera. Nos demais estados o
 verde significa "agora": um pedido armado durante `TROCAR TIME` também espera
 o verde daquele estado. É a leitura mais previsível do indicador e evita
@@ -249,7 +249,7 @@ F8/F12/XButton1/XButton2. (A dívida global `Hoenn222_DebtMs` deixou de existir:
 Pokémon tem o próprio acumulador de CD.)
 
 `Sleep`, `SetTimer` e o agendamento do combo são idênticos: a única diferença
-em `ComboComplexoHoenn222()` é a trava ser decidida sob `Critical` e haver
+em `IniciarRodizio222()` é a trava ser decidida sob `Critical` e haver
 validação de time.
 
 ## 6. Testes

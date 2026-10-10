@@ -30,17 +30,17 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | Modulo | Responsabilidade |
 | --- | --- |
 | `nucleo/estado.ahk` | variaveis globais: modo, time atual, fase, travas, pedidos armados |
-| `nucleo/logger.ahk` | log de sessao (`logs/`) e diagnostico (`SwitchDebug`, `%TEMP%\macro_switch_debug.log`) |
+| `nucleo/logger.ahk` | log de sessao (`logs/`) e diagnostico (`LogDiagnostico`, `%TEMP%\macro_switch_debug.log`) |
 | `tempo/cooldown.ahk` | CD individual dos 6 Pokemon (acumulador, taxa fora/dentro da Ball, atrasos, margem) |
-| `tempo/planejador.ahk` | menor volta sustentavel e janelas por dupla (`PlanHoenn222`) |
+| `tempo/planejador.ahk` | menor volta sustentavel e janelas por dupla (`PlanejarVolta`) |
 | `tempo/cronometro.ahk` | alvo de cada fase, pendente ate o verde, quem segura o verde |
 | `macro/teclas.ahk` | teclas basicas (`ComboSimples`, pocao, alvo, reiniciar) |
-| `macro/teclas_inativas.ahk` | funcoes que o respawn atual nao usa (`ThrowBallAround`, `MrMimeCombo`) |
-| `macro/troca_time.ahk` | `TrocarTimeHoenn`: validacao, envio, estado |
+| `macro/teclas_inativas.ahk` | funcoes que o respawn atual nao usa (`LancarBolasAoRedor`, `ComboMrMime`) |
+| `macro/troca_time.ahk` | `TrocarDeTime`: validacao, envio, estado |
 | `macro/rodizio_33.ahk` | rodizio do modo 3-3 |
 | `macro/rodizio_222.ahk` | rodizio do modo 2-2-2 (registra cast e chamada no `tempo`) |
 | `macro/antecipacao*.ahk` | combo e troca armados (verde automatico) e emergencia (duplo clique) |
-| `macro/modos.ahk` | `TrocarModo` e `ResincronizarHoenn222` (F8) |
+| `macro/modos.ahk` | `TrocarModo` e `Resincronizar` (F8) |
 | `macro/acoes.ahk` | acao de cada botao conforme o modo (`Acao_*`) |
 | `interface/controle.ahk` | laco de 30 ms: XInput, movimento, botoes -> acoes |
 | `interface/painel.ahk` | tooltip de texto e orquestracao da interface |

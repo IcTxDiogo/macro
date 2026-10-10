@@ -2,26 +2,26 @@
 ; Rodizio do modo Hoenn 2-2-2: 3 duplas (tank + secundario) com cooldown por Pokemon.
 ; O QUE vem do tempo (quando liberar) esta em src\tempo; aqui so a sequencia de teclas.
 
-ComboComplexoHoenn222(origem := "manual") {
-    global TimeAtual, isRodizioAtivo, Hoenn222_ExecutionId
-    global Hoenn222_ComboArmed, Hoenn222_ComboArmedTeam
+IniciarRodizio222(origem := "manual") {
+    global TimeAtual, RodizioAtivo, IdDaExecucao
+    global ComboArmado, TimeDoComboArmado
 
     ; Decisao atomica: o botao e a varredura do contador nunca passam juntos pelo
     ; bloqueio, e a trava so e armada quando existe um time valido.
     previousCritical := A_IsCritical
     Critical("On")
     try {
-        if (isRodizioAtivo || TimeAtual < 1 || TimeAtual > 3) {
+        if (RodizioAtivo || TimeAtual < 1 || TimeAtual > 3) {
             return
         }
-        isRodizioAtivo := true
+        RodizioAtivo := true
 
         ; O combo consome o pedido: nada fica pendente durante a execucao.
-        Hoenn222_ComboArmed := false
-        Hoenn222_ComboArmedTeam := 0
+        ComboArmado := false
+        TimeDoComboArmado := 0
 
         timeOriginal := TimeAtual
-        execIdOriginal := Hoenn222_ExecutionId
+        execIdOriginal := IdDaExecucao
         p1 := (timeOriginal == 1) ? 1 : ((timeOriginal == 2) ? 3 : 5)
         p2 := (timeOriginal == 1) ? 2 : ((timeOriginal == 2) ? 4 : 6)
         SetTimer(() => ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem), -1)
@@ -31,33 +31,33 @@ ComboComplexoHoenn222(origem := "manual") {
 }
 
 ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem := "manual") {
-    global isRodizioAtivo, TimeAtual, ModoAtual
-    global Hoenn222_State, Hoenn222_StateStartTick, Hoenn222_LastComboStartTick, Hoenn222_P2CallTick
-    global Hoenn222_P2EnterTick, Hoenn222_ExecutionId
+    global RodizioAtivo, TimeAtual, ModoAtual
+    global FaseAtual, InicioDaFaseTick, UltimoComboTick, ChamadaDoSecundarioTick
+    global EntradaDoSecundarioTick, IdDaExecucao
 
-    ; isRodizioAtivo já ativado na função pai
+    ; RodizioAtivo já ativado na função pai
 
     ; Se a execução foi invalidada por F8 ou o time mudou no intervalo de agendamento do SetTimer
-    if (timeOriginal != TimeAtual || ModoAtual != "Hoenn222" || execIdOriginal != Hoenn222_ExecutionId) {
-        isRodizioAtivo := false
+    if (timeOriginal != TimeAtual || ModoAtual != "Hoenn222" || execIdOriginal != IdDaExecucao) {
+        RodizioAtivo := false
         return
     }
 
     timeDaExecucao := timeOriginal
-    Hoenn222_ExecutionId++
-    myExecId := Hoenn222_ExecutionId
+    IdDaExecucao++
+    myExecId := IdDaExecucao
 
-    Hoenn222_State := "WAITING_TEAM_SWITCH"
-    Hoenn222_StateStartTick := A_TickCount
-    Hoenn222_LastComboStartTick := A_TickCount
-    Hoenn222_P2CallTick := 0
+    FaseAtual := "WAITING_TEAM_SWITCH"
+    InicioDaFaseTick := A_TickCount
+    UltimoComboTick := A_TickCount
+    ChamadaDoSecundarioTick := 0
 
-    LogComboStart(timeDaExecucao, "2-2-2", origem)
+    RegistrarInicioDoCombo(timeDaExecucao, "2-2-2", origem)
 
     try {
         ; O registro do cast vem antes do envio: se o ControlSend falhar, o CD fica
         ; carregado, que e o lado conservador. Contagem e envio nunca divergem.
-        Hoenn222CdRegistrarCast(timeDaExecucao)
+        RegistrarCast(timeDaExecucao)
         ComboSimples() ; Bate com o p1 (que já está fora)
         Sleep(SleepAfterTankCombo) ; animação do jogo: valor original, nunca alterado
 
@@ -67,13 +67,13 @@ ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem := "manual") {
         }
 
         ; Atualiza timer do P2 se ainda for a mesma execução
-        if (Hoenn222_ExecutionId == myExecId) {
-            Hoenn222_P2CallTick := A_TickCount
-            Hoenn222_P2EnterTick[timeDaExecucao] := A_TickCount
+        if (IdDaExecucao == myExecId) {
+            ChamadaDoSecundarioTick := A_TickCount
+            EntradaDoSecundarioTick[timeDaExecucao] := A_TickCount
         }
 
         ControlSend("{" p2 "}", , GameWindow) ; Chama p2
-        Hoenn222CdRegistrarChamada(timeDaExecucao)
+        RegistrarChamadaDoSecundario(timeDaExecucao)
         ; Intervalo interno original. Se o CD do secundário não couber aqui, o
         ; macro não estende a espera: ele avisou antes, no verde do combo.
         Sleep(SleepAfterSwitch)
@@ -83,11 +83,11 @@ ExecutarRodizio222(p1, p2, timeOriginal, execIdOriginal, origem := "manual") {
             return
         }
 
-        Hoenn222CdRegistrarCast(timeDaExecucao, true)
+        RegistrarCast(timeDaExecucao, true)
         ComboSimples()
 
         Sleep(SleepAfterCombo)
     } finally {
-        isRodizioAtivo := false
+        RodizioAtivo := false
     }
 }

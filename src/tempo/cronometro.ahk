@@ -1,59 +1,59 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Cronometro: alvo de cada fase, pendente ate o verde, quem segura o verde.
 
 ; Alvo do cronometro para a fase e a dupla informadas. E sempre uma DURACAO em
 ; ms contada a partir do inicio do estado, nunca um instante absoluto: e assim
 ; que Hoenn222_ComboTargetMs e Hoenn222_SwitchTargetMs sao definidos no config,
-; e e assim que GetHoenn222PendingMs() desconta o tempo ja decorrido.
+; e e assim que FaltaParaVerdeMs() desconta o tempo ja decorrido.
 ; Com o otimizador ligado o alvo vem do estado real dos seis Pokemon; desligado,
 ; ou se qualquer coisa falhar, volta aos alvos fixos do config.ahk.
-GetHoenn222BaseTargetMs(state, timeIndex) {
+AlvoDaFaseMs(state, timeIndex) {
     global Hoenn222_CdOptimizerEnabled, Hoenn222_ComboTargetMs, Hoenn222_SwitchTargetMs
-    global Hoenn222_StateStartTick
+    global InicioDaFaseTick
 
     if (state != "WAITING_COMBO" && state != "WAITING_TEAM_SWITCH")
         return 0
 
     if Hoenn222_CdOptimizerEnabled {
         try {
-            ; GetHoenn222ComboTargetMs e "quanto falta A PARTIR DE AGORA", e ja
+            ; FaltaParaComboViavelMs e "quanto falta A PARTIR DE AGORA", e ja
             ; desconta a recuperacao ate este instante. Para obedecer o contrato
             ; "duracao desde o inicio do estado" soma-se o decorrido: o pendente
             ; (alvo - decorrido) volta a ser exatamente o que falta. Sem isso o
             ; decorrido era descontado duas vezes e o verde acendia na metade do
             ; tempo real, com o CD do tank ainda correndo.
             return (state == "WAITING_COMBO")
-                ? (A_TickCount - Hoenn222_StateStartTick) + GetHoenn222ComboTargetMs(timeIndex)
-                : GetHoenn222SwitchTargetMs(timeIndex)
+                ? (A_TickCount - InicioDaFaseTick) + FaltaParaComboViavelMs(timeIndex)
+                : DuracaoDoTrocarTimeMs(timeIndex)
         } catch as e {
-            SwitchDebug("SWITCH_ERROR", "phase=cd_target state=" state, e)
+            LogDiagnostico("SWITCH_ERROR", "phase=cd_target state=" state, e)
         }
     }
     return (state == "WAITING_COMBO")
-        ? GetHoenn222TargetFromConfig(Hoenn222_ComboTargetMs, timeIndex)
-        : GetHoenn222TargetFromConfig(Hoenn222_SwitchTargetMs, timeIndex)
+        ? AlvoFixoDoConfigMs(Hoenn222_ComboTargetMs, timeIndex)
+        : AlvoFixoDoConfigMs(Hoenn222_SwitchTargetMs, timeIndex)
 }
 
 ; Alvos fixos do config.ahk, por dupla. Usado quando o otimizador esta
 ; desligado e como destino de fallback se o estado real nao puder ser lido.
-GetHoenn222TargetFromConfig(mapaTarget, timeIndex) {
+AlvoFixoDoConfigMs(mapaTarget, timeIndex) {
     try {
         return (IsObject(mapaTarget) && mapaTarget.Has(timeIndex)) ? mapaTarget[timeIndex] : 0
     } catch as e {
-        SwitchDebug("SWITCH_ERROR", "phase=target_config team=" timeIndex, e)
+        LogDiagnostico("SWITCH_ERROR", "phase=target_config team=" timeIndex, e)
         return 0
     }
 }
 
 ; Quanto falta, em ms, para o alvo da fase atual. E uma DURACAO, nunca um
 ; instante absoluto; quem compara com o relogio e o alvo da propria fase.
-GetHoenn222PendingMs() {
-    global Hoenn222_State, Hoenn222_StateStartTick, TimeAtual
-    if (Hoenn222_State == "WAITING_FIRST_COMBO") {
+FaltaParaVerdeMs() {
+    global FaseAtual, InicioDaFaseTick, TimeAtual
+    if (FaseAtual == "WAITING_FIRST_COMBO") {
         return 0
     }
-    idealMs := GetHoenn222BaseTargetMs(Hoenn222_State, TimeAtual)
-    return idealMs - (A_TickCount - Hoenn222_StateStartTick)
+    idealMs := AlvoDaFaseMs(FaseAtual, TimeAtual)
+    return idealMs - (A_TickCount - InicioDaFaseTick)
 }
 
 ; COMBAR: quantos ms ate o combo INTEIRO ser viavel com os tempos internos fixos.
@@ -66,16 +66,16 @@ GetHoenn222PendingMs() {
 ;               max(0, SleepAfterSwitch - ExitLatencySecondary) - Margin, medido
 ;               em CD que o secundario pode ter em T0.
 ; E o maior dos dois: o verde so acende quando tank E secundario estao viaveis.
-GetHoenn222ComboTargetMs(timeIndex) {
-    global Hoenn222_SecondaryToleranceMs
-    tankMs := Hoenn222CdReadyInMs(Hoenn222Slot(timeIndex, false), A_TickCount)
+FaltaParaComboViavelMs(timeIndex) {
+    global ToleranciaDoSecundarioMs
+    tankMs := MsAteCastSeguro(SlotDoPokemon(timeIndex, false), A_TickCount)
     ; Primeira volta: o CD zerado nao pode liberar o combo antes do ritmo do plano.
-    tankMs := Max(tankMs, Hoenn222FirstLapLureMs(timeIndex))
-    secSlot := Hoenn222Slot(timeIndex, true)
-    cdSec := Hoenn222CdTouched(secSlot, A_TickCount)
+    tankMs := Max(tankMs, FaltaParaLureDaPrimeiraVoltaMs(timeIndex))
+    secSlot := SlotDoPokemon(timeIndex, true)
+    cdSec := LerCooldownRestanteMs(secSlot, A_TickCount)
     secMs := 0
-    if (cdSec > Hoenn222_SecondaryToleranceMs)
-        secMs := (cdSec - Hoenn222_SecondaryToleranceMs) / Hoenn222CdRateOf(secSlot)
+    if (cdSec > ToleranciaDoSecundarioMs)
+        secMs := (cdSec - ToleranciaDoSecundarioMs) / LerTaxaDeRecuperacao(secSlot)
     return Max(0, Max(tankMs, secMs))
 }
 
@@ -86,26 +86,26 @@ GetHoenn222ComboTargetMs(timeIndex) {
 ; primeiro cast so libera o combo depois do `lure` planejado, contado da troca
 ; de time (o estado COMBAR comeca na troca). Passado o primeiro cast do time, o
 ; que manda e so o cooldown real, como sempre.
-Hoenn222FirstLapLureMs(timeIndex) {
-    global Hoenn222_TeamCasted, Hoenn222_StateStartTick
+FaltaParaLureDaPrimeiraVoltaMs(timeIndex) {
+    global TankJaCastou, InicioDaFaseTick
     timeIndex := Integer(timeIndex)
     ; Primeira volta: o lure do plano. Depois dela, so o piso de conforto do
     ; config (tempo para chegar ao ponto e puxar); 0 = so o cooldown manda.
-    piso := Hoenn222_TeamCasted[timeIndex]
-        ? Hoenn222MinFromConfig("Hoenn222_MinLureMs", timeIndex)
-        : PlanHoenn222().Lures[timeIndex]
-    falta := piso - (A_TickCount - Hoenn222_StateStartTick)
+    piso := TankJaCastou[timeIndex]
+        ? PisoDoConfigMs("Hoenn222_MinLureMs", timeIndex)
+        : PlanejarVolta().Lures[timeIndex]
+    falta := piso - (A_TickCount - InicioDaFaseTick)
     return falta > 0 ? falta : 0
 }
 
 ; Quanto de CD o secundario ainda teria no seu cast se o combo comecasse agora.
 ; E o que permite avisar "nao viavel" sem nunca inventar cooldown disponivel.
-Hoenn222SecondaryPendenteMs(timeIndex, offsetMs) {
-    global Hoenn222_SecondaryToleranceMs
-    slot := Hoenn222Slot(timeIndex, true)
+CooldownPendenteDoSecundarioMs(timeIndex, offsetMs) {
+    global ToleranciaDoSecundarioMs
+    slot := SlotDoPokemon(timeIndex, true)
     agora := A_TickCount
-    cd := Hoenn222CdTouched(slot, agora)
-    taxa := Hoenn222CdRateOf(slot)
+    cd := LerCooldownRestanteMs(slot, agora)
+    taxa := LerTaxaDeRecuperacao(slot)
     restante := cd - (offsetMs * taxa)
     if (restante < 0)
         restante := 0
@@ -119,15 +119,15 @@ Hoenn222SecondaryPendenteMs(timeIndex, offsetMs) {
 
 ; Quem esta segurando o verde: "secundario", "tank" ou "" quando ja esta viavel.
 ; E diagnostico: nao altera nenhum alvo, so diz ao jogador o que falta.
-GetHoenn222ComboBloqueio(timeIndex) {
-    global Hoenn222_SecondaryToleranceMs
-    secSlot := Hoenn222Slot(timeIndex, true)
-    cdSec := Hoenn222CdTouched(secSlot, A_TickCount)
-    if (cdSec > Hoenn222_SecondaryToleranceMs)
+QuemBloqueiaOCombo(timeIndex) {
+    global ToleranciaDoSecundarioMs
+    secSlot := SlotDoPokemon(timeIndex, true)
+    cdSec := LerCooldownRestanteMs(secSlot, A_TickCount)
+    if (cdSec > ToleranciaDoSecundarioMs)
         return "secundario"
-    if (Hoenn222CdReadyInMs(Hoenn222Slot(timeIndex, false), A_TickCount) > 0)
+    if (MsAteCastSeguro(SlotDoPokemon(timeIndex, false), A_TickCount) > 0)
         return "tank"
-    if (Hoenn222FirstLapLureMs(timeIndex) > 0)
+    if (FaltaParaLureDaPrimeiraVoltaMs(timeIndex) > 0)
         return "primeira_volta"
     return ""
 }
@@ -138,7 +138,7 @@ GetHoenn222ComboBloqueio(timeIndex) {
 ; ANTES do cast; este estado comeca no cast. Da troca ate o cast ja passou o
 ; lure, entao o que falta da janela e P + tempo do secundario fora. Usar a
 ; janela inteira contava o lure duas vezes e atrasava o verde da troca.
-GetHoenn222SwitchTargetMs(timeIndex) {
-    plano := PlanHoenn222()
+DuracaoDoTrocarTimeMs(timeIndex) {
+    plano := PlanejarVolta()
     return plano.Janelas[timeIndex] - plano.Lures[timeIndex]
 }

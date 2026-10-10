@@ -18,15 +18,15 @@ IniciarControle()
 
 ; --- ATALHOS DE TECLADO E MOUSE ---
 ; Reinicia o macro (o botao Start do controle faz o mesmo).
-^Esc:: InterruptAndReload()
+^Esc:: ReiniciarMacro()
 
 ; Troca de modo (Normal / Hoenn 3-3 / Hoenn 2-2-2) e ressincronizacao do 2-2-2.
 F12:: TrocarModo()
-F8:: ResincronizarHoenn222()
+F8:: Resincronizar()
 
 #HotIf WinActive(GameWindow)
 ; Agendados como no controle: a acao (que pode dormir centenas de ms) roda numa
 ; thread propria e nunca prende a thread do movimento por baixo dela.
-XButton1:: SetTimer(() => Acao_Bumpers(), -1)          ; botao lateral 1: combo
-XButton2:: SetTimer(() => Acao_Gatilhos("mouse"), -1)  ; botao lateral 2: revive / troca de time
+XButton1:: SetTimer(() => AcaoBumpers(), -1)          ; botao lateral 1: combo
+XButton2:: SetTimer(() => AcaoGatilhos("mouse"), -1)  ; botao lateral 2: revive / troca de time
 #HotIf

@@ -12,13 +12,13 @@ ComboSimples() {
     ControlSend("{" KeyCombo "}", , GameWindow)
 }
 
-CatchCenter() {
+CapturarAlvo() {
     if WinExist(GameWindow) {
         ControlSend("{" KeyBallSpecial "}", , GameWindow)
     }
 }
 
-Revive() {
+Reviver() {
     if WinExist(GameWindow) {
         ControlSend("{" KeyRevive "}", , GameWindow)
     }
@@ -30,19 +30,19 @@ AtivarBuffLure() {
     }
 }
 
-ChangeTarget() {
+TrocarAlvo() {
     if WinExist(GameWindow) {
         ControlSend("{" KeyChangeTarget "}", , GameWindow)
     }
 }
 
-Potion() {
+UsarPocao() {
     if WinExist(GameWindow) {
         ControlSend("{" KeyPotion "}", , GameWindow)
     }
 }
 
-InterruptAndReload() {
+ReiniciarMacro() {
     if WinExist(GameWindow) {
         Thread "Interrupt"
         Sleep 200

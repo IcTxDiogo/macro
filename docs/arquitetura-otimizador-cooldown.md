@@ -187,7 +187,7 @@ O estado já decorrido nunca é reconstruído: é acumulado.
 Implementado em `src/tempo` e coberto pela suíte de testes (`tests/`).
 
 - **Reaproveitado:** o acumulador preguiçoso por slot (`Hoenn222Cd*`), o mapeamento tier → CD,
-  o `PlanHoenn222()` com cache, o cancelamento de pedido armado e o fallback para os alvos fixos.
+  o `PlanejarVolta()` com cache, o cancelamento de pedido armado e o fallback para os alvos fixos.
 - **Descartado:** `PrepareMs` artificial e a extensão dinâmica da espera interna do
   secundário. Os intervalos são `SleepAfterTankCombo` e `SleepAfterSwitch`, os valores originais.
 - **Sem espera artificial:** com todos os CD zerados o alvo de COMBAR é só a margem
@@ -202,7 +202,7 @@ Correções de runtime encontradas durante a implementação:
 - Os alvos de `Hoenn222_BaseTargetMs` são **durações** contadas do início do
   estado, nunca instantes absolutos — é assim que `Hoenn222_ComboTargetMs` e
   `Hoenn222_SwitchTargetMs` são definidos, e é assim que
-  `GetHoenn222PendingMs()` desconta o decorrido.
+  `FaltaParaVerdeMs()` desconta o decorrido.
 - O runner dos testes lia as fontes na codificação ANSI do console (aqui
   ibm850), o que corrompia os acentos e produzia erro de sintaxe no script
   gerado; e montava o arquivo com LF sobre fontes CRLF. Ambos corrigidos.

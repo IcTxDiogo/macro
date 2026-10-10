@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$SourceRoot = (Split-Path -Parent $PSScriptRoot),
     [switch]$Baseline,
     [switch]$LoggerInitFailure,
@@ -33,15 +33,15 @@ $modulos = $modulos.Replace('A_Temp "\macro_switch_debug.log"', 'A_ScriptDir "\d
 $source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 
 # Executar as funções de produção, substituindo apenas fronteiras de I/O e relógio.
-$source = $source.Replace('GetHoenn222BaseTargetMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
-$source = $source.Replace('LogTeamSwitch(newTeam, modo) {', 'RealTeamLogger(newTeam, modo) {')
-$source = $source.Replace('AtualizarHoenn222CentralTooltip(text := "", x := 0, y := 0, color := "FFE033") {', 'RealCentralTooltip(text := "", x := 0, y := 0, color := "FFE033") {')
+$source = $source.Replace('AlvoDaFaseMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
+$source = $source.Replace('RegistrarTrocaNoLog(newTeam, modo) {', 'RealTeamLogger(newTeam, modo) {')
+$source = $source.Replace('DesenharQuadradoCentral(text := "", x := 0, y := 0, color := "FFE033") {', 'RealCentralTooltip(text := "", x := 0, y := 0, color := "FFE033") {')
 foreach ($entry in @{
     'ControlSend' = 'MockControlSend'; 'Sleep' = 'MockSleep'; 'WinExist' = 'MockWinExist';
     'WinActive' = 'MockWinExist'; 'WinGetPos' = 'MockWinGetPos'; 'ToolTip' = 'MockToolTip';
     'SetTimer' = 'MockSetTimer'; 'XInput_GetState' = 'MockXInput';
-    'AtualizarHoenn222CentralTooltip' = 'MockCentralTooltip';
-    'GetHoenn222BaseTargetMs' = 'MockBaseTarget'; 'LogTeamSwitch' = 'MockTeamLogger'
+    'DesenharQuadradoCentral' = 'MockCentralTooltip';
+    'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'
 }.GetEnumerator()) {
     $source = [regex]::Replace($source, '\b' + $entry.Key + '\s*\(', $entry.Value + '(')
 }
@@ -60,7 +60,7 @@ global TestLoggerInitFailure := $initFailure
 $tests = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'hoenn-switch-tests.ahk') -Raw -Encoding UTF8
 if ($Baseline) {
     # A versão anterior não recebia o argumento opcional de origem do gatilho.
-    $tests = [regex]::Replace($tests, 'Acao_Gatilhos\("[^"]*"\)', 'Acao_Gatilhos()')
+    $tests = [regex]::Replace($tests, 'AcaoGatilhos\("[^"]*"\)', 'AcaoGatilhos()')
     # Não analisar chamadas à nova função de interface ausente no código anterior.
     $tests = [regex]::Replace($tests, '(?s)RunTests\(\) \{.*?(?=RunBaseline\(\) \{)', "RunTests() {`r`n}`r`n")
 }

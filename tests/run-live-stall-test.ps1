@@ -1,4 +1,4 @@
-# Teste do CONGELAMENTO do laco de movimento durante uma acao armada.
+﻿# Teste do CONGELAMENTO do laco de movimento durante uma acao armada.
 #
 # Os testes isolados (run-hoenn-switch-tests.ps1) simulam SetTimer e Sleep, entao nao
 # enxergam este defeito: ele so existe com timers e relogio REAIS. Aqui o codigo de
@@ -29,12 +29,12 @@ $modulos = Read-ModulosJuntos $SourceRoot $script:Modulos { param($m) Read-TestS
 $source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 
 # Mesmas fronteiras de I/O do runner isolado, MENOS SetTimer, Sleep e A_TickCount.
-$source = $source.Replace('GetHoenn222BaseTargetMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
-$source = $source.Replace('LogTeamSwitch(newTeam, modo) {', 'RealTeamLogger(newTeam, modo) {')
+$source = $source.Replace('AlvoDaFaseMs(state, timeIndex) {', 'RealBaseTarget(state, timeIndex) {')
+$source = $source.Replace('RegistrarTrocaNoLog(newTeam, modo) {', 'RealTeamLogger(newTeam, modo) {')
 foreach ($entry in @{
     'ControlSend' = 'MockControlSend'; 'WinExist' = 'MockWinExist'; 'WinActive' = 'MockWinExist';
     'WinGetPos' = 'MockWinGetPos'; 'XInput_GetState' = 'MockXInput';
-    'GetHoenn222BaseTargetMs' = 'MockBaseTarget'; 'LogTeamSwitch' = 'MockTeamLogger'
+    'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'
 }.GetEnumerator()) {
     $source = [regex]::Replace($source, '\b' + $entry.Key + '\s*\(', $entry.Value + '(')
 }
@@ -76,34 +76,34 @@ Log(s) {
 }
 Run() {
     global
-    SwitchDebugFile := A_Temp "\macro-live-stall-" Scenario ".log"
-    if FileExist(SwitchDebugFile)
-        FileDelete(SwitchDebugFile)
-    Hoenn222_TeamCasted := Map(1, false, 2, false, 3, false)
-    ResetarCooldownsHoenn222(A_TickCount)
+    ArquivoDiagnostico := A_Temp "\macro-live-stall-" Scenario ".log"
+    if FileExist(ArquivoDiagnostico)
+        FileDelete(ArquivoDiagnostico)
+    TankJaCastou := Map(1, false, 2, false, 3, false)
+    ResetarCooldowns(A_TickCount)
     if (Scenario = "combo") {
         ; ritmo da 1a volta libera o COMBAR em ~1,5 s; o pedido fica armado
-        Hoenn222_State := "WAITING_COMBO"
-        Hoenn222_StateStartTick := A_TickCount - (PlanHoenn222().Lures[1] - 1500)
-        SolicitarComboHoenn222()
+        FaseAtual := "WAITING_COMBO"
+        InicioDaFaseTick := A_TickCount - (PlanejarVolta().Lures[1] - 1500)
+        PedirCombo()
     } else {
         ; TROCAR TIME a ~1,5 s do verde; o gatilho fica armado
-        Hoenn222_State := "WAITING_TEAM_SWITCH"
-        Hoenn222_StateStartTick := A_TickCount - (GetHoenn222SwitchTargetMs(1) - 1500)
-        Hoenn222_TeamCasted := Map(1, true, 2, true, 3, true)
-        Acao_Gatilhos("controller")
+        FaseAtual := "WAITING_TEAM_SWITCH"
+        InicioDaFaseTick := A_TickCount - (DuracaoDoTrocarTimeMs(1) - 1500)
+        TankJaCastou := Map(1, true, 2, true, 3, true)
+        AcaoGatilhos("controller")
     }
     SetTimer(GameLoop, 30)
     SetTimer(Fim, -10000)
 }
 Fim() {
-    global GameLoopTicks, SwitchDebugFile, Scenario
+    global GameLoopTicks, ArquivoDiagnostico, Scenario
     maxg := 0
     for i, t in GameLoopTicks {
         if (i > 1 && t - GameLoopTicks[i - 1] > maxg)
             maxg := t - GameLoopTicks[i - 1]
     }
-    texto := FileExist(SwitchDebugFile) ? FileRead(SwitchDebugFile) : ""
+    texto := FileExist(ArquivoDiagnostico) ? FileRead(ArquivoDiagnostico) : ""
     disparou := InStr(texto, "COMBO_FIRED") || InStr(texto, "SWITCH_FIRED")
     Log(Scenario "|" maxg "|" GameLoopTicks.Length "|" (disparou ? 1 : 0))
     ExitApp(0)

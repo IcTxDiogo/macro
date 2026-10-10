@@ -1,15 +1,15 @@
 ﻿#Requires AutoHotkey v2.0
 ; Quadrado central colorido do indicador (verde / azul / amarelo / violeta).
-; So le o tempo (GetHoenn222PendingMs) e o estado dos pedidos; nunca decide nada.
+; So le o tempo (FaltaParaVerdeMs) e o estado dos pedidos; nunca decide nada.
 
-GetHoenn222CentralTooltip(&color := unset) {
-    global Hoenn222_State, Hoenn222_ComboArmed, Hoenn222_SwitchArmed
+TextoDoQuadradoCentral(&color := unset) {
+    global FaseAtual, ComboArmado, TrocaArmada
 
     color := "FFE033"
     ; Espaço largo mantém o tooltip nativo visível sem letras ou números.
     square := Chr(0x3000)
-    if (Hoenn222_State == "WAITING_FIRST_COMBO") {
-        ; O primeiro combo executa na hora (GetHoenn222PendingMs devolve 0), então
+    if (FaseAtual == "WAITING_FIRST_COMBO") {
+        ; O primeiro combo executa na hora (FaltaParaVerdeMs devolve 0), então
         ; o indicador tem de dizer o mesmo: verde = apertar agora executa agora.
         ; Amarelo aqui mentia: parecia "espere" e o botão executava assim mesmo.
         color := "33CC66"
@@ -18,12 +18,12 @@ GetHoenn222CentralTooltip(&color := unset) {
 
     ; O relógio continua interno; a interface mostra somente a cor.
     ; O mesmo cálculo do verde decide o combo antecipado.
-    color := GetHoenn222CentralColor(GetHoenn222PendingMs(), Hoenn222_State,
-        Hoenn222_ComboArmed || Hoenn222_SwitchArmed)
+    color := CorDoQuadrado(FaltaParaVerdeMs(), FaseAtual,
+        ComboArmado || TrocaArmada)
     return square
 }
 
-GetHoenn222CentralColor(pendingMs, state, armed := false) {
+CorDoQuadrado(pendingMs, state, armed := false) {
     if (pendingMs <= 0)
         return "33CC66" ; Verde com cerca de 80% de intensidade.
     if (armed)
@@ -33,7 +33,7 @@ GetHoenn222CentralColor(pendingMs, state, armed := false) {
     return "FFE033" ; Amarelo com cerca de 80% de intensidade por padrão.
 }
 
-AtualizarHoenn222CentralTooltip(text := "", x := 0, y := 0, color := "FFE033") {
+DesenharQuadradoCentral(text := "", x := 0, y := 0, color := "FFE033") {
     static lastHwnd := 0, lastColor := ""
     static lastText := "", lastX := 0, lastY := 0
     if (text == "") {

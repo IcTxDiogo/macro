@@ -3,7 +3,7 @@
 ; Ficam isoladas aqui para nao poluir src\macro\teclas.ahk.
 
 ; Joga pokebolas em area ao redor do personagem (botao FaceRight, hoje desativado).
-ThrowBallAround() {
+LancarBolasAoRedor() {
     if !WinActive(GameWindow) {
         return
     }
@@ -37,7 +37,7 @@ ThrowBallAround() {
 }
 
 ; Combo com o Mr. Mime usando o mouse.
-MrMimeCombo() {
+ComboMrMime() {
     if !WinActive(GameWindow) {
         return
     }
