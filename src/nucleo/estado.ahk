@@ -32,5 +32,5 @@ global DisparoDaTrocaPendente := false
 ; --- Planejamento ---
 global PlanoEmCache := false          ; false = ainda nao planejado
 global AvisoDeTierDesconhecidoFeito := false
-global ToleranciaDoSecundarioMs := CalcularToleranciaDoSecundarioMs()
+global ToleranciaDoSecundarioMs := ConfigDeTempoValida ? CalcularToleranciaDoSecundarioMs() : 0
 

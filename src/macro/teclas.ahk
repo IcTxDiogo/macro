@@ -2,14 +2,23 @@
 ; Teclas basicas do jogo: cada funcao envia uma tecla (ou uma sequencia curta) e nada mais.
 ; Nenhuma decide QUANDO agir: isso e do tempo (src\tempo) e das antecipacoes (src\macro).
 
-ComboSimples() {
+ComboSimples(contextoValido := false) {
+    if (IsObject(contextoValido) && !contextoValido.Call())
+        return false
     ControlSend("{" KeyFullAtk "}", , GameWindow)
     Sleep(50)
+    if (IsObject(contextoValido) && !contextoValido.Call())
+        return false
     ControlSend("{" KeyPokestop "}", , GameWindow)
     Sleep(50)
+    if (IsObject(contextoValido) && !contextoValido.Call())
+        return false
     ControlSend("{" KeyMedicine "}", , GameWindow)
     Sleep(50)
+    if (IsObject(contextoValido) && !contextoValido.Call())
+        return false
     ControlSend("{" KeyCombo "}", , GameWindow)
+    return true
 }
 
 CapturarAlvo() {

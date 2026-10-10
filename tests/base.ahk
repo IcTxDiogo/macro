@@ -7,6 +7,7 @@ global MockInput := {bRightTrigger: 0, bLeftTrigger: 0, wButtons: 0,
     sThumbLX: 0, sThumbLY: 0, sThumbRX: 0, sThumbRY: 0}
 global PassCount := 0
 global MockAdvanceTime := false, MockSendMs := 0, MockCheckCast := false, MockSimCasts := 0
+global MockSleepHook := false
 RunTests()
 ExitApp(0)
 
@@ -29,6 +30,8 @@ MockSleep(ms) {
     Timeline.Push("sleep:" ms)
     if MockAdvanceTime
         MockTick += ms
+    if IsObject(MockSleepHook)
+        MockSleepHook.Call(ms)
 }
 MockRegistrarCast(time, secundario := false) {
     global MockSimCasts
@@ -59,7 +62,7 @@ MockToolTip(text := "", x := 0, y := 0, id := 1) {
     global Rendered, FaultTooltip
     if FaultTooltip
         throw Error("simulated ToolTip failure", "MockToolTip")
-    Rendered.Push({text: text, x: x, y: y, id: id})
+    Rendered.Push({text: text, x: x, y: y, id: id, coord: A_CoordModeToolTip})
 }
 MockCentralTooltip(text := "", x := 0, y := 0, color := "FFE033") {
     ; Manter a coloração nativa isolada do jogo durante os testes.
@@ -90,7 +93,9 @@ MockTeamLogger(team, mode) {
 ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     global
     FaultTooltip := false
+    MockSleepHook := false
     DesenharPainel() ; invalida tambem o cache visual entre casos isolados
+    LiberarTeclasDeMovimento(false)
     TimeAtual := 1
     MockAdvanceTime := false, MockSendMs := 0, MockCheckCast := false, MockSimCasts := 0
     RodizioAtivo := false
@@ -131,6 +136,7 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     WindowAvailable := true, RealInvalidWindow := false
     WindowFocused := true, MockWindowX := 10, MockWindowY := 20
     MockInput.bRightTrigger := 0
+    MockInput.sThumbLX := 0, MockInput.sThumbLY := 0, MockInput.sThumbRX := 0, MockInput.sThumbRY := 0
     MockInput.wButtons := 0
     InicioDoComboTick := 0
     ArquivoDoLogDaSessao := A_ScriptDir "\session_logs\test-session.txt"
@@ -193,6 +199,7 @@ RunTests() {
         TestesBlocosBall()
         TestesPlanejadorDiscreto()
         TestesPainel()
+        TestesCancelamentoEMovimento()
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")
     } catch as e {
         FileAppend("FAIL: " e.Message " | " e.What " | line=" e.Line "`n", "*", "UTF-8")

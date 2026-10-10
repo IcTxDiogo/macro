@@ -8,11 +8,6 @@ AtualizarInterface(controleConectado := true) {
     static ultimoErro := ""
     try {
         janelaExiste := WinExist(GameWindow)
-        if (janelaExiste && !WinActive(GameWindow)) {
-            DesenharQuadradoCentral()
-            DesenharPainel()
-            return
-        }
         if !controleConectado {
             DesenharQuadradoCentral()
             if janelaExiste {
@@ -23,6 +18,9 @@ AtualizarInterface(controleConectado := true) {
             }
         } else if janelaExiste {
             WinGetPos(&janelaX, &janelaY, , , GameWindow)
+            ; Cada thread do GameLoop comeca com seu modo de coordenadas padrao.
+            ; O quadrado usa coordenadas da tela mesmo quando o painel esta em cache.
+            CoordMode("ToolTip", "Screen")
             texto := TextoDeStatus
             if (ModoAtual == "Hoenn222") {
                 texto := TextoDoPainel()

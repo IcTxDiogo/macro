@@ -2,7 +2,7 @@
 # Mantida em sincronia com src/indice.ahk: Test-IndicesDeInclude falha se alguem
 # adicionar, remover ou reordenar um modulo e esquecer de atualizar uma das duas.
 $script:Modulos = @(
-    'src/nucleo/logger.ahk', 'src/nucleo/estado.ahk', 'src/nucleo/validacao_config.ahk',
+    'src/nucleo/logger.ahk', 'src/nucleo/validacao_config.ahk', 'src/nucleo/estado.ahk',
     'src/tempo/cooldown.ahk', 'src/tempo/planejador.ahk', 'src/tempo/cronometro.ahk',
     'src/macro/teclas.ahk', 'src/macro/troca_time.ahk',
     'src/macro/rodizio_222.ahk', 'src/macro/antecipacao.ahk',

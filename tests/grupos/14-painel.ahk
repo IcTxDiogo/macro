@@ -3,8 +3,10 @@ TestesPainel() {
     global
     ResetCase()
     Hoenn222_InBallWholeBlocks := true
+    CoordMode("ToolTip", "Window")
     AtualizarInterface()
     Assert(ContarDesenhosDoPainel() == 1, "painel: primeira exibicao")
+    Assert(Rendered[1].id == 2 && Rendered[1].coord == "Screen", "painel: quadrado usa tela antes do desenho do painel")
     loop 100 {
         MockTick += 30
         AtualizarInterface()
@@ -24,14 +26,18 @@ TestesPainel() {
     Pass("painel: cache de texto/posicao e interface limpa")
 
     WindowFocused := false
-    AtualizarInterface()
-    Assert(Rendered[-1].id == 1 && Rendered[-1].text == "", "painel: oculta ao perder foco")
+    CoordMode("ToolTip", "Window") ; nova thread pode ter voltado ao padrao
     quantidade := ContarDesenhosDoPainel()
     AtualizarInterface()
-    Assert(ContarDesenhosDoPainel() == quantidade, "painel: nao oculta de novo a cada ciclo")
+    Assert(ContarDesenhosDoPainel() == quantidade && Rendered[-1].id == 2 && Rendered[-1].text != "", "painel: indicadores permanecem sem foco")
+    Assert(Rendered[-1].coord == "Screen", "painel: coordenadas do quadrado independem do cache do painel")
+    TimeAtual := 3
+    AtualizarInterface()
+    Assert(ContarDesenhosDoPainel() == quantidade + 1 && InStr(Rendered[-1].text, "TIME 3"), "painel: atualiza estado tambem sem foco")
+    quantidade := ContarDesenhosDoPainel()
     WindowFocused := true
     AtualizarInterface()
-    Assert(ContarDesenhosDoPainel() == quantidade + 1 && InStr(Rendered[-1].text, "TROCAR TIME"), "painel: retorno do foco invalida cache")
+    Assert(ContarDesenhosDoPainel() == quantidade, "painel: retorno do foco nao recria indicador")
     WindowAvailable := false
     AtualizarInterface()
     Assert(Rendered[-1].text == "", "painel: janela ausente limpa texto antigo")
@@ -54,7 +60,7 @@ TestesPainel() {
     Assert(ContarDesenhosDoPainel() == quantidade, "painel: desconexao estavel nao redesenha")
     AtualizarInterface()
     Assert(InStr(Rendered[-1].text, "HOENN 2-2-2"), "painel: reconexao atualiza")
-    Pass("painel: foco, ocultacao, F8, modos e controle sem texto antigo")
+    Pass("painel: indicadores sem foco, coordenadas de tela, ocultacao, F8 e modos")
 
     ResetCase("WAITING_COMBO")
     AplicarCast(1, true, MockTick)

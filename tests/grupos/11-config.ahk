@@ -30,4 +30,24 @@ TestesConfig() {
     Assert(InStr(DebugText(), "CONFIG_PROBLEMA"), "AF problemas vao para o log")
     Pass("AF config invalido vira aviso no painel e linha no log")
 
+    blocoAnterior := Hoenn222_InBallBlockMs
+    sleepAnterior := SleepAfterSwitch
+    cdAnterior := Hoenn222_CdByTier["SR"]
+    for valor in [0, -2000, "abc"] {
+        Hoenn222_InBallBlockMs := valor
+        Assert(InStr(Join(ValidarConfig()), "Hoenn222_InBallBlockMs invalido"), "config: bloco invalido detectado")
+        Assert(!ConfigDeTempoEstaValida(), "config: bloco invalido impede inicializacao")
+    }
+    Hoenn222_InBallBlockMs := blocoAnterior
+    SleepAfterSwitch := -1
+    Assert(!ConfigDeTempoEstaValida() && InStr(Join(ValidarConfig()), "SleepAfterSwitch invalido"), "config: sleep negativo recusado")
+    SleepAfterSwitch := sleepAnterior
+    for valor in [0, -43, "abc"] {
+        Hoenn222_CdByTier["SR"] := valor
+        Assert(!ConfigDeTempoEstaValida() && InStr(Join(ValidarConfig()), "CD do tier 'SR' invalido"), "config: CD invalido recusado")
+    }
+    Hoenn222_CdByTier["SR"] := cdAnterior
+    Assert(ConfigDeTempoEstaValida(), "config: parametros validos preservados")
+    Pass("config: bloco, sleeps e CDs invalidos detectados antes dos calculos")
+
 }

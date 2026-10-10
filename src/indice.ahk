@@ -5,10 +5,10 @@
 ;             Nunca envia tecla nem toca na janela ou na interface.
 ;   macro     o que o macro FAZ no jogo: teclas, rodizios, troca de time, antecipacao, modos
 ;   interface gamepad (laco de 30 ms) e indicador visual
-; A ORDEM importa: estado e cooldown leem o config.ahk ao carregar (main.ahk o inclui antes).
+; A ORDEM importa: validar config antes de estado, que calcula a tolerancia ao carregar.
 #Include nucleo\logger.ahk
-#Include nucleo\estado.ahk
 #Include nucleo\validacao_config.ahk
+#Include nucleo\estado.ahk
 
 #Include tempo\cooldown.ahk
 #Include tempo\planejador.ahk

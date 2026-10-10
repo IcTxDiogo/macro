@@ -88,14 +88,16 @@ VerificarComboArmado() {
     DisparoDoComboPendente := true
     LogDiagnostico("COMBO_FIRED", "team=" TimeAtual " reason=armed")
     ; Thread descartavel: o combo sobe por cima do laco se rodar aqui, e o movimento congela.
-    SetTimer(DispararComboArmado, -1)
+    timeDoPedido := TimeDoComboArmado
+    idDoPedido := IdDaExecucao
+    SetTimer(() => DispararComboArmado(timeDoPedido, idDoPedido), -1)
 }
 
 ; Thread descartavel do disparo automatico. IniciarRodizio222 consome o pedido junto com a trava.
-DispararComboArmado() {
+DispararComboArmado(timeDoPedido, idDoPedido) {
     global DisparoDoComboPendente
     try {
-        IniciarRodizio222("antecipado")
+        IniciarRodizio222("antecipado", timeDoPedido, idDoPedido)
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=combo_fire", e)
     } finally {

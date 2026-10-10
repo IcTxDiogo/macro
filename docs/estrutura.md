@@ -30,7 +30,7 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | Modulo | Responsabilidade |
 | --- | --- |
 | `nucleo/estado.ahk` | variaveis globais: modo, time atual, fase, travas, pedidos armados |
-| `nucleo/validacao_config.ahk` | confere o `config.ahk` ao carregar; problemas aparecem no painel (`!! CONFIG !!`) e no log |
+| `nucleo/validacao_config.ahk` | valida antes dos calculos; valores aritmeticos invalidos impedem iniciar, demais problemas aparecem no painel e no log |
 | `nucleo/logger.ahk` | log de sessao (`logs/`) e diagnostico (`LogDiagnostico`, `%TEMP%\macro_switch_debug.log`) |
 | `tempo/cooldown.ahk` | CD individual dos 6 Pokemon (acumulador, taxa fora/dentro da Ball, atrasos, margem) |
 | `tempo/planejador.ahk` | menor volta sustentavel e janelas por dupla (`PlanejarVolta`) |
@@ -45,7 +45,7 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | `interface/painel.ahk` | tooltip de texto e orquestracao da interface |
 | `interface/quadrado_central.ahk` | quadrado colorido (verde / azul / amarelo / violeta) |
 
-A ordem de `indice.ahk` importa: `estado` e `cooldown` leem o `config.ahk` ao carregar.
+A ordem de `indice.ahk` importa: `validacao_config` precede `estado`, que calcula a tolerancia ao carregar.
 
 ## Documentação
 
@@ -69,6 +69,7 @@ A ordem de `indice.ahk` importa: `estado` e `cooldown` leem o `config.ahk` ao ca
 ```powershell
 powershell -File tests\run-hoenn-switch-tests.ps1                 # logica isolada, relogio e timers simulados
 powershell -File tests\run-hoenn-switch-tests.ps1 -LoggerInitFailure
+powershell -File tests\run-config-startup-tests.ps1               # autoexecute isolado: config valido e invalido
 powershell -File tests\run-live-stall-test.ps1                    # timers reais: laco nao congela
 ```
 
@@ -104,9 +105,19 @@ Com false, o plano volta a ser um piso nominal continuo e o verde ainda usa o ac
 Nao e uma regra comprovada do servidor. false volta ao modelo continuo. Sleeps fisicos,
 tiers e compensacoes nao sao alterados ao ligar a opcao.
 
-O painel e o quadrado central usam cache visual de texto/posicao. O painel oculta ao perder
-foco ou fechar o jogo, invalidando seu cache, e volta a desenhar ao retornar. O contador do
-secundario usa segundos inteiros apenas na apresentacao; o verde continua em milissegundos.
+O painel e o quadrado central usam cache visual de texto/posicao. Continuam visiveis com
+o PKA sem foco. O painel oculta ao fechar o jogo, invalida seu cache e volta a desenhar ao
+retornar. O contador do secundario usa segundos inteiros apenas na apresentacao; o verde
+continua em milissegundos.
+
+F8 invalida os callbacks antigos e interrompe o rodizio nas esperas entre as acoes,
+mantendo o time atual e zerando o modelo. Um pedido feito depois do F8 nao e consumido
+por um callback anterior. Ao desconectar o controle, o macro libera as teclas WASD que
+pressionou; se o envio falhar, tenta novamente na proxima leitura.
+
+A validacao de config precede os calculos de estado. Bloco nao positivo, sleeps negativos,
+CDs nao positivos e valores nao numericos impedem a inicializacao antes de XInput/timers,
+com uma mensagem indicando os parametros invalidos. O config nao e corrigido automaticamente.
 
 `CD_CAST` inclui `modelo_antes_ms` e `fracao_ball_antes_ms`; continua sendo registro do
 comando previsto, nao confirmacao de execucao. A gravacao deve confirmar os casts aceitos.

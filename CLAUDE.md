@@ -75,6 +75,7 @@ F8 zera o modelo e a fase mantendo o time atual.
 ```powershell
 powershell -File tests\run-hoenn-switch-tests.ps1                  # logica isolada
 powershell -File tests\run-hoenn-switch-tests.ps1 -LoggerInitFailure
+powershell -File tests\run-config-startup-tests.ps1               # inicializacao isolada, config valido e invalido
 powershell -File tests\run-live-stall-test.ps1                     # timers reais
 ```
 

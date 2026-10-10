@@ -4,12 +4,16 @@
 
 ; Valida e agenda o rodizio do time atual. A decisao e atomica (Critical): o clique e a
 ; varredura do pedido armado nunca passam juntos, e a trava so e armada com time valido.
-IniciarRodizio222(origem := "manual") {
+IniciarRodizio222(origem := "manual", timeEsperado := 0, idEsperado := -1) {
     global TimeAtual, RodizioAtivo, IdDaExecucao, ComboArmado, TimeDoComboArmado
 
     criticoAnterior := A_IsCritical
     Critical("On")
     try {
+        ; Validar o pedido antigo sob a mesma trava que inicia a execucao.
+        if (origem == "antecipado" && (!ComboArmado || TimeDoComboArmado != timeEsperado
+            || TimeAtual != timeEsperado || IdDaExecucao != idEsperado || ModoAtual != "Hoenn222"))
+            return
         if (RodizioAtivo || TimeAtual < 1 || TimeAtual > 3)
             return
         RodizioAtivo := true
@@ -41,7 +45,8 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
         return
     }
 
-    IdDaExecucao++
+    idDaSequencia := ++IdDaExecucao
+    contextoValido := () => RodizioAindaValido(timeDoRodizio, idDaSequencia)
 
     FaseAtual := "WAITING_TEAM_SWITCH"
     InicioDaFaseTick := A_TickCount
@@ -49,15 +54,16 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
     RegistrarInicioDoCombo(timeDoRodizio, "2-2-2", origem)
 
     try {
-        ; O registro do cast vem antes do envio: se o ControlSend falhar, o CD fica carregado
-        ; (lado conservador). Contagem e envio nunca divergem.
+        ; O registro estimado vem antes do envio: se o ControlSend falhar, o modelo ainda
+        ; inicia o CD (lado conservador). Nao e confirmacao de execucao pelo servidor.
         RegistrarCast(timeDoRodizio)
         preparoTankTick := A_TickCount
-        ComboSimples()
+        if !ComboSimples(contextoValido)
+            return
         LogDiagnostico("COMBO_PREPARO", "time=" timeDoRodizio " papel=tank inicio_tick=" preparoTankTick " fim_tick=" A_TickCount " duracao_ms=" (A_TickCount - preparoTankTick) " visual_confirmation=unknown")
         Sleep(SleepAfterTankCombo)
 
-        if (timeDoRodizio != TimeAtual || ModoAtual != "Hoenn222")
+        if !contextoValido.Call()
             return
 
 
@@ -68,15 +74,20 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
         Sleep(SleepAfterSwitch)
 
         ; Nao bater com o secundario se o time mudou durante a espera.
-        if (timeDoRodizio != TimeAtual || ModoAtual != "Hoenn222")
+        if !contextoValido.Call()
             return
 
         RegistrarCast(timeDoRodizio, true)
         preparoSecTick := A_TickCount
-        ComboSimples()
+        if !ComboSimples(contextoValido)
+            return
         LogDiagnostico("COMBO_PREPARO", "time=" timeDoRodizio " papel=sec inicio_tick=" preparoSecTick " fim_tick=" A_TickCount " duracao_ms=" (A_TickCount - preparoSecTick) " visual_confirmation=unknown")
         Sleep(SleepAfterCombo)
     } finally {
         RodizioAtivo := false
     }
+}
+
+RodizioAindaValido(timeDoRodizio, idDaSequencia) {
+    return TimeAtual == timeDoRodizio && ModoAtual == "Hoenn222" && IdDaExecucao == idDaSequencia
 }

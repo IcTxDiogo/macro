@@ -7,6 +7,13 @@
 #Include lib\XInput.ahk
 #Include src\indice.ahk
 
+; Recusar configuracao aritmetica invalida antes de ligar entradas/timers, sem muda-la.
+if !ConfigDeTempoValida {
+    MsgBox("Configuracao de tempo invalida. Corrija config.ahk e reabra o macro."
+        TextoDosProblemasDeConfig())
+    ExitApp()
+}
+
 GarantirInstanciaUnica()
 
 try {

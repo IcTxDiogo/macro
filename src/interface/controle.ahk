@@ -26,6 +26,7 @@ GameLoop() {
 
     leitura := XInput_GetState(0)
     if !leitura {
+        LiberarTeclasDeMovimento(WinExist(GameWindow))
         AtualizarInterface(false)
         return
     }
@@ -33,6 +34,8 @@ GameLoop() {
     jogoAtivo := WinExist(GameWindow)
     if (jogoAtivo)
         AtualizarMovimento(leitura)
+    else
+        LiberarTeclasDeMovimento(false)
     DespacharBotoes(leitura, jogoAtivo)
     VerificarPedidosArmados()
     AtualizarInterface()
@@ -40,11 +43,34 @@ GameLoop() {
 
 ; Analogico -> WASD. Cada tecla so e enviada quando o estado muda.
 AtualizarMovimento(leitura) {
-    static ativo := Map("w", false, "s", false, "a", false, "d", false)
+    ativo := EstadoDasTeclasDeMovimento()
     AplicarTeclaDeMovimento("w", leitura.sThumbLY > DeadzoneMove || leitura.sThumbRY > DeadzoneMove, ativo)
     AplicarTeclaDeMovimento("s", leitura.sThumbLY < -DeadzoneMove || leitura.sThumbRY < -DeadzoneMove, ativo)
     AplicarTeclaDeMovimento("a", leitura.sThumbLX < -DeadzoneMove || leitura.sThumbRX < -DeadzoneMove, ativo)
     AplicarTeclaDeMovimento("d", leitura.sThumbLX > DeadzoneMove || leitura.sThumbRX > DeadzoneMove, ativo)
+}
+
+EstadoDasTeclasDeMovimento() {
+    static ativo := Map("w", false, "s", false, "a", false, "d", false)
+    return ativo
+}
+
+; Libera apenas teclas pressionadas pelo macro; falha no envio permite tentar de novo.
+LiberarTeclasDeMovimento(janelaDisponivel) {
+    ativo := EstadoDasTeclasDeMovimento()
+    for tecla, pressionada in ativo {
+        if !pressionada
+            continue
+        if !janelaDisponivel {
+            ativo[tecla] := false ; janela fechada: nao reaproveitar estado na proxima
+            continue
+        }
+        try {
+            AplicarTeclaDeMovimento(tecla, false, ativo)
+        } catch as e {
+            LogDiagnostico("SWITCH_ERROR", "phase=movement_release key=" tecla, e)
+        }
+    }
 }
 
 AplicarTeclaDeMovimento(tecla, deveEstarAtiva, ativo) {
