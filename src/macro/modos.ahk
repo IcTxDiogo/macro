@@ -14,7 +14,6 @@ TrocarModo() {
         TextoDeStatus := "Modo: Normal"
         DesenharQuadradoCentral() ; limpa o quadrado central ao sair do 2-2-2
     }
-    SalvarEstado()
 }
 
 ; F8: volta ao inicio do ciclo (sem informacao do jogo, os seis comecam prontos).
@@ -27,6 +26,5 @@ Resincronizar() {
         InicioDaFaseTick := A_TickCount
         IdDaExecucao++ ; invalida rodizios agendados antes do F8
         ResetarCooldowns(A_TickCount)
-        SalvarEstado()
     }
 }

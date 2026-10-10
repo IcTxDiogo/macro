@@ -7,7 +7,7 @@ global DeadzoneMove := 20000
 
 ; --- Esperas internas do combo (animacao do jogo; nao alterar sem medir) ---
 global SleepAfterTankCombo := 2700    ; cast do tank -> chamada do secundario
-global SleepAfterSwitch := 800        ; chamada do secundario -> cast dele
+global SleepAfterSwitch := 800        ; chamada do secundario -> inicio das acoes dele
 global SleepAfterCombo := 3000        ; depois do combo
 
 ; --- Teclas ---
@@ -36,25 +36,30 @@ global Hoenn222_SecondTier := Map(1, "Lendário", 2, "UR", 3, "UR")
 
 ; --- Hoenn 2-2-2: otimizador de cooldown ---
 global Hoenn222_CdOptimizerEnabled := true
+; Planejador por blocos validado em gameplay; false restaura a politica anterior.
+global Hoenn222_UseDiscretePlanner := true
+global Hoenn222_ComboPreparationMs := 235 ; estimativa do preparo ja existente, nao e Sleep
+; Restricoes da distribuicao tolerante a +/-100 ms e preparo +/-50 ms.
+; Nao alteram recuperacao, latencia ou MarginMs: exigem distancia dos limites no plano.
+global Hoenn222_PlannerOutReserveMs := 300
+global Hoenn222_PlannerBallReserveMs := 500
 global Hoenn222_CdByTier := Map("Lendário", 40000, "UR", 43000, "SR", 45000, "T1", 50000)
 global Hoenn222_CdDefaultMs := 50000  ; rotulo desconhecido
 global Hoenn222_RateOutOfBall := 1.0  ; recuperacao de CD por segundo, fora da Ball
 global Hoenn222_RateInBall := 0.5     ; e dentro da Ball
+; Modelo empirico: dentro da Ball, creditar so blocos completos de 2 s (1 s de CD a 0,5x).
+; A fracao e descartada ao sair. false volta ao modelo continuo; nao e regra comprovada.
+global Hoenn222_InBallWholeBlocks := true
+global Hoenn222_InBallBlockMs := 2000 ; 2 s na Ball recuperam 1 s de cooldown
 global Hoenn222_LatencyMs := 250      ; congelamento do CD ao castar e ao sair da Ball na troca de time (tank)
-; Congelamento do CD do SECUNDARIO ao ser chamado. E um atraso fisico proprio (chamada,
-; recolhida do tank, bola), medido na gravacao de 09/10: o modelo com 250 ms estava ~0,9 s
-; otimista e a F7 do Rampardos foi comida 2 de 5. Nao e margem: a margem fica so para ruido.
-global Hoenn222_ExitLatencySecondaryMs := 1100
-global Hoenn222_MarginMs := 450       ; folga depois do CD estimado zerar (cada +50 ms ~ +0,1 s de volta)
+; Congelamento estimado do CD do secundario ao ser chamado, separado da espera fisica.
+; A versao por blocos foi validada com zero; a compensacao antiga nao prova latencia.
+global Hoenn222_ExitLatencySecondaryMs := 0
+global Hoenn222_MarginMs := 0       ; folga depois do CD estimado zerar (cada +50 ms ~ +0,1 s de volta)
 
 ; Alvos FIXOS de cada fase: usados so com o otimizador desligado ou se ele falhar.
 global Hoenn222_ComboTargetMs := Map(1, 15000, 2, 16000, 3, 15500)    ; COMBAR
 global Hoenn222_SwitchTargetMs := Map(1, 9500, 2, 11500, 3, 11500)    ; TROCAR TIME
-
-; --- Recarregar o macro (Ctrl+Esc / Start) ---
-; Restaura o modelo de cooldown e a fase do ciclo se o estado salvo tiver menos de 3 minutos.
-; F8 continua zerando de proposito. false = todo reload comeca do zero.
-global Hoenn222_RestoreStateOnReload := true
 
 ; --- Hoenn 2-2-2: antecipacao ---
 ; Duas pressoes do mesmo botao dentro desta janela executam na hora (emergencia). 0 desliga.

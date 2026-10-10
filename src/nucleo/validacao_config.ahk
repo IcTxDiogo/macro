@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Confere o config.ahk ao carregar. Um valor invalido nao derruba o macro (cada modulo tem
 ; seu fallback), mas ficava so no log; aqui os problemas viram texto curto para o painel.
 
@@ -52,7 +52,10 @@ ValidarNumerosMs(problemas) {
     global Hoenn222_EmergencyWindowMs, Hoenn222_CdDefaultMs, Hoenn222_RateInBall, Hoenn222_RateOutOfBall
     for nome, valor in Map("Hoenn222_LatencyMs", Hoenn222_LatencyMs,
         "Hoenn222_ExitLatencySecondaryMs", Hoenn222_ExitLatencySecondaryMs,
-        "Hoenn222_MarginMs", Hoenn222_MarginMs, "Hoenn222_EmergencyWindowMs", Hoenn222_EmergencyWindowMs) {
+        "Hoenn222_MarginMs", Hoenn222_MarginMs, "Hoenn222_EmergencyWindowMs", Hoenn222_EmergencyWindowMs,
+        "Hoenn222_ComboPreparationMs", Hoenn222_ComboPreparationMs,
+        "Hoenn222_PlannerOutReserveMs", Hoenn222_PlannerOutReserveMs,
+        "Hoenn222_PlannerBallReserveMs", Hoenn222_PlannerBallReserveMs) {
         if (!IsNumber(valor) || valor < 0)
             problemas.Push(nome " invalido: " valor)
     }

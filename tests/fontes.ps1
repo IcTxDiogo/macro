@@ -7,7 +7,7 @@ $script:Modulos = @(
     'src/macro/teclas.ahk', 'src/macro/troca_time.ahk',
     'src/macro/rodizio_222.ahk', 'src/macro/antecipacao.ahk',
     'src/macro/antecipacao_combo.ahk', 'src/macro/antecipacao_troca.ahk',
-    'src/macro/modos.ahk', 'src/macro/persistencia.ahk', 'src/macro/acoes.ahk',
+    'src/macro/modos.ahk', 'src/macro/acoes.ahk',
     'src/interface/quadrado_central.ahk', 'src/interface/painel.ahk', 'src/interface/controle.ahk'
 )
 

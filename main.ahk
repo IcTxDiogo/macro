@@ -11,12 +11,18 @@ GarantirInstanciaUnica()
 
 try {
     XInput_Init()
-} catch as e {
-    MsgBox("ERRO XINPUT: " e.Message)
+} catch as erroAoIniciarXInput {
+    MsgBox("ERRO XINPUT: " erroAoIniciarXInput.Message)
     ExitApp
 }
 
-RestaurarEstado()
+; Planejar antes de ligar o timer: a busca discreta nunca ocupa o GameLoop de 30 ms.
+try {
+    if Hoenn222_CdOptimizerEnabled
+        PlanejarVolta()
+} catch as erroAoPlanejarInicial {
+    LogDiagnostico("SWITCH_ERROR", "phase=initial_plan", erroAoPlanejarInicial)
+}
 IniciarControle()
 
 ; --- ATALHOS DE TECLADO E MOUSE ---

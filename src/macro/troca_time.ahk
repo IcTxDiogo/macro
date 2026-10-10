@@ -52,7 +52,6 @@ TrocarDeTime() {
     } finally {
         Critical(criticoAnterior)
     }
-    SalvarEstado()
 
     ; Sequencia original: uma falha auxiliar nao cancela as acoes seguintes.
     for tecla in [KeyPokestop, KeyFullDef] {

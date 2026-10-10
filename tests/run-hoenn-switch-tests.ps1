@@ -35,12 +35,13 @@ $source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 $source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')
 $source = [regex]::Replace($source, '(?m)^RegistrarTrocaNoLog\(', 'RealTeamLogger(')
 $source = [regex]::Replace($source, '(?m)^DesenharQuadradoCentral\(', 'RealCentralTooltip(')
+$source = [regex]::Replace($source, '(?m)^RegistrarCast\(', 'RealRegistrarCast(')
 foreach ($entry in @{
     'ControlSend' = 'MockControlSend'; 'Sleep' = 'MockSleep'; 'WinExist' = 'MockWinExist';
-    'WinActive' = 'MockWinExist'; 'WinGetPos' = 'MockWinGetPos'; 'ToolTip' = 'MockToolTip';
+    'WinActive' = 'MockWinActive'; 'WinGetPos' = 'MockWinGetPos'; 'ToolTip' = 'MockToolTip';
     'SetTimer' = 'MockSetTimer'; 'XInput_GetState' = 'MockXInput';
     'DesenharQuadradoCentral' = 'MockCentralTooltip';
-    'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'
+    'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'; 'RegistrarCast' = 'MockRegistrarCast'
 }.GetEnumerator()) {
     $source = [regex]::Replace($source, '\b' + $entry.Key + '\s*\(', $entry.Value + '(')
 }
@@ -51,6 +52,7 @@ if ($source -match '\bControlSend\s*\(' -or $source -match '(?m)^#Include\b') {
 $initFailure = if ($LoggerInitFailure) { 'true' } else { 'false' }
 $header = @"
 #Requires AutoHotkey v2.0
+#Warn All, StdOut
 global MockTick := 100000
 global TestLoggerInitFailure := $initFailure
 "@
@@ -59,6 +61,7 @@ $tests = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'base.ahk') -Raw -En
 foreach ($grupo in Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'grupos') -Filter '*.ahk' | Sort-Object Name) {
     $tests += "`n" + (Get-Content -LiteralPath $grupo.FullName -Raw -Encoding UTF8)
 }# Todas as funções são analisadas antes do autoexecute; RunTests encerra o processo.
+$tests = [regex]::Replace($tests, '\bRegistrarCast\b', 'MockRegistrarCast')
 $script = [regex]::Replace("$header`r`n$source`r`n$tests", "(?<!`r)`n", "`r`n")
 $scriptPath = Join-Path $testDirectory 'isolated-tests.ahk'
 [IO.File]::WriteAllText($scriptPath, $script, [Text.UTF8Encoding]::new($true))

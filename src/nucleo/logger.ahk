@@ -37,8 +37,8 @@ LogDiagnostico(evento, detalhes := "", erro := 0) {
 try {
     if !DirExist(PastaDeLogs)
         DirCreate(PastaDeLogs)
-} catch as e {
-    LogDiagnostico("SWITCH_ERROR", "phase=logger_init", e)
+} catch as erroAoIniciarLog {
+    LogDiagnostico("SWITCH_ERROR", "phase=logger_init", erroAoIniciarLog)
 }
 
 global ArquivoDoLogDaSessao := PastaDeLogs "\farm_log_" FormatTime(, "yyyy-MM-dd_HH-mm-ss") ".txt"

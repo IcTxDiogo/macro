@@ -133,8 +133,8 @@ TestesCooldown() {
 ; --- INTERVALOS INTERNOS: NUNCA ESTENDIDOS ---
     ; O macro nao estende a espera entre tank, chamada e secundario. Se o
     ; secundario nao couber, o verde simplesmente nao acende e o macro avisa.
-    Assert(SleepAfterTankCombo == 2700, "I animacao do tank continua 2700")
-    Assert(SleepAfterSwitch == 800, "I intervalo antes do secundario continua 800")
+    Assert(SleepAfterTankCombo == 2700, "I animacao do tank usa 2700 no teste atual")
+    Assert(SleepAfterSwitch == 800, "I intervalo antes do secundario usa 800 no teste atual")
     ResetCase("WAITING_COMBO", 0, 0)
     AplicarCast(1, true, MockTick)
     Assert(CooldownPendenteDoSecundarioMs(1, 0) > 0, "I secundario em CD aberto e inviável para comecar agora")

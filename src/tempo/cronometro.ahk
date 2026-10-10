@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Cronometro: ate quando esperar, por fase. Alimenta o indicador (verde = 0) e os pedidos
 ; armados. Tudo aqui e uma DURACAO em ms, nunca um instante absoluto.
 
@@ -60,6 +60,8 @@ FaltaParaComboViavelMs(time) {
     tankMs := Max(tankMs, FaltaParaLureDaPrimeiraVoltaMs(time))
 
     slotSec := SlotDoPokemon(time, true)
+    if Hoenn222_InBallWholeBlocks
+        return Max(0, tankMs, FaltaParaSecundarioEmBlocosMs(time))
     cdSecMs := LerCooldownRestanteMs(slotSec, A_TickCount)
     secMs := 0
     if (cdSecMs > ToleranciaDoSecundarioMs)
@@ -73,8 +75,28 @@ FaltaParaComboViavelMs(time) {
 ; de SleepAfterSwitch; a margem ainda tem de caber antes do cast. Com o atraso medido
 ; (1100 ms > 800 ms) nada recupera a 1,0: o CD tem de zerar dentro da Ball.
 CalcularToleranciaDoSecundarioMs() {
+    if Hoenn222_InBallWholeBlocks
+        return Floor(SleepAfterTankCombo / Hoenn222_InBallBlockMs) * CreditoDoBlocoBallMs()
+            + Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs) * Hoenn222_RateOutOfBall - Hoenn222_MarginMs
     return 0.5 * SleepAfterTankCombo + Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs)
         - Hoenn222_MarginMs
+}
+
+; Previsao experimental: conta os blocos que completariam ate a chamada, incluindo a
+; fracao ja acumulada. Nao transforma a recuperacao em uma taxa continua para achar o verde.
+FaltaParaSecundarioEmBlocosMs(time) {
+    slot := SlotDoPokemon(time, true)
+    tick := A_TickCount
+    restanteMs := LerCooldownRestanteMs(slot, tick)
+    foraMs := Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs)
+    if (restanteMs <= 0)
+        return Max(0, MsAteCastSeguro(slot, tick) - TempoAteChamadaPrevistoMs() - SleepAfterSwitch)
+    necessarioMs := restanteMs - foraMs * Hoenn222_RateOutOfBall + Hoenn222_MarginMs
+    if (necessarioMs <= 0)
+        return 0
+    congeladoMs := Max(0, CooldownContaDesdeTick[slot] - tick)
+    ateBlocosMs := Ceil(necessarioMs / CreditoDoBlocoBallMs()) * Hoenn222_InBallBlockMs - CooldownFracaoBallMs[slot]
+    return Max(0, congeladoMs + ateBlocosMs - TempoAteChamadaPrevistoMs())
 }
 
 ; Lure que ainda falta antes de liberar o combo (contado da troca de time, que e quando a
@@ -85,7 +107,7 @@ CalcularToleranciaDoSecundarioMs() {
 FaltaParaLureDaPrimeiraVoltaMs(time) {
     global TankJaCastou, InicioDaFaseTick
     time := Integer(time)
-    lureMs := TankJaCastou[time]
+    lureMs := (TankJaCastou[time] && !UsarPlanejadorDiscreto())
         ? PisoDoConfigMs("Hoenn222_MinLureMs", time)
         : PlanejarVolta().Lures[time]
     faltaMs := lureMs - (A_TickCount - InicioDaFaseTick)
@@ -96,6 +118,15 @@ FaltaParaLureDaPrimeiraVoltaMs(time) {
 ; de agora. Permite avisar "nao viavel" sem inventar cooldown disponivel.
 CooldownPendenteDoSecundarioMs(time, emMs) {
     slot := SlotDoPokemon(time, true)
+    if Hoenn222_InBallWholeBlocks {
+        tick := A_TickCount
+        restanteMs := LerCooldownRestanteMs(slot, tick)
+        congeladoMs := Max(0, CooldownContaDesdeTick[slot] - tick)
+        tempoBallMs := CooldownFracaoBallMs[slot] + Max(0, emMs + TempoAteChamadaPrevistoMs() - congeladoMs)
+        naChamadaMs := Max(0, restanteMs - Floor(tempoBallMs / Hoenn222_InBallBlockMs) * CreditoDoBlocoBallMs())
+        foraMs := Max(0, SleepAfterSwitch - Hoenn222_ExitLatencySecondaryMs)
+        return Max(0, naChamadaMs - foraMs * Hoenn222_RateOutOfBall + Hoenn222_MarginMs)
+    }
     taxa := LerTaxaDeRecuperacao(slot)
     restanteMs := Max(0, LerCooldownRestanteMs(slot, A_TickCount) - emMs * taxa)
     ; entre o inicio do combo e a chamada o secundario segue dentro da Ball
@@ -108,8 +139,12 @@ CooldownPendenteDoSecundarioMs(time, emMs) {
 ; Diagnostico: nao altera nenhum alvo, so diz ao jogador o que falta.
 QuemBloqueiaOCombo(time) {
     global ToleranciaDoSecundarioMs
+    if Hoenn222_InBallWholeBlocks {
+        if (FaltaParaSecundarioEmBlocosMs(time) > 0)
+            return "secundario"
+    }
     cdSecMs := LerCooldownRestanteMs(SlotDoPokemon(time, true), A_TickCount)
-    if (cdSecMs > ToleranciaDoSecundarioMs)
+    if (!Hoenn222_InBallWholeBlocks && cdSecMs > ToleranciaDoSecundarioMs)
         return "secundario"
     if (MsAteCastSeguro(SlotDoPokemon(time, false), A_TickCount) > 0)
         return "tank"
@@ -123,5 +158,11 @@ QuemBloqueiaOCombo(time) {
 ; resta a janela menos o lure (usar a janela inteira contava o lure duas vezes).
 DuracaoDoTrocarTimeMs(time) {
     plano := PlanejarVolta()
+    if UsarPlanejadorDiscreto() {
+        chamada := ChamadaDoSecundarioTick[Integer(time)]
+        ateChamada := (chamada >= InicioDaFaseTick && chamada > 0)
+            ? chamada - InicioDaFaseTick : SleepAfterTankCombo + plano.PreparoMs
+        return ateChamada + plano.SecFora[Integer(time)]
+    }
     return plano.Janelas[time] - plano.Lures[time]
 }

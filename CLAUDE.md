@@ -14,15 +14,18 @@ Estrutura, camadas e diagnostico: `docs/estrutura.md`. Historico e decisoes: `do
 | trocar Pokemon/tier de uma dupla | `config.ahk`: `Hoenn222_TankTier`, `Hoenn222_SecondTier` (`Lendário`, `UR`, `SR`, `T1`) |
 | CD por tier | `config.ahk`: `Hoenn222_CdByTier` |
 | skill comida / folga | `config.ahk`: `Hoenn222_ExitLatencySecondaryMs`, `Hoenn222_LatencyMs`, `Hoenn222_MarginMs` |
+| modelo empirico de recuperacao em blocos | `config.ahk`: `Hoenn222_InBallWholeBlocks` (false = continuo), `Hoenn222_InBallBlockMs` (2000 atual: 2 s na Ball recuperam 1 s de CD) |
+| planejador discreto / rollback | `config.ahk`: `Hoenn222_UseDiscretePlanner` (false = politica estavel anterior); guia: `docs/otimizador-por-blocos.md` |
 | tempo minimo fora (conforto) | `config.ahk`: `Hoenn222_MinLureMs`, `Hoenn222_MinSecondaryOutMs` |
 | teclas, janela, tela | `config.ahk` |
-| reload sem perder o modelo (ou desligar) | `config.ahk`: `Hoenn222_RestoreStateOnReload` |
 | o que um botao faz (e qual a proxima acao) | `src/macro/acoes.ahk` (`PedirProximaAcao`) |
 | mapeamento botao do controle | `src/interface/controle.ahk` (`DespacharBotoes`) |
 | atalhos de teclado/mouse | `main.ahk` |
 | conta do cooldown, plano, verde | `src/tempo/` |
 
 Depois de editar o config: recarregar o macro (Ctrl+Esc ou Start) e F8 para resincronizar.
+Recarregar ou reabrir sempre comeca do zero no time 1, sem restaurar estado salvo.
+F8 zera o modelo e a fase mantendo o time atual.
 
 ## Regras que nao se quebram
 
@@ -44,9 +47,14 @@ Depois de editar o config: recarregar o macro (Ctrl+Esc ou Start) e F8 para resi
 
 - So um Pokemon fica fora da Ball por vez. CD recupera 1,0 s/s fora e 0,5 s/s dentro.
 - Atrasos fisicos separados: inicio do CD apos o cast (250), saida do tank na troca de time
-  (250) e saida do secundario na chamada (1100, medido em jogo).
+  (250) e saida do secundario na chamada (0 na versao atual).
 - `slot = (time-1)*2 + (1 tank | 2 secundario)`. Slots pares sao secundarios.
 - O planejador acha a menor volta L em que os seis recuperam CD + atrasos + margem.
+  Com `UseDiscretePlanner=true`, resolve os seis periodos fora por blocos inteiros e inclui
+  o preparo existente (235 ms estimados). A troca ancora o periodo fora na chamada real.
+  Com false, L e o piso continuo da politica anterior; o verde usa os blocos acumulados.
+  Reservas do plano validado: 300 ms de CD e 500 ms de permanencia Ball; nao sao
+  credito ficticio nem alteram MarginMs. Sao restricoes explicitas da distribuicao.
   A 1a volta ja segue o ritmo do plano (os seis comecam prontos, mas nao liberam de uma vez).
 - Cores: verde = executa; azul = faltam <= 10 s (COMBAR); amarelo = espera; violeta = armado.
   Dois cliques em ate 400 ms = emergencia (executa na hora). A proxima acao e decidida pela fase:

@@ -52,8 +52,9 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
         ; O registro do cast vem antes do envio: se o ControlSend falhar, o CD fica carregado
         ; (lado conservador). Contagem e envio nunca divergem.
         RegistrarCast(timeDoRodizio)
-        SalvarEstado()
+        preparoTankTick := A_TickCount
         ComboSimples()
+        LogDiagnostico("COMBO_PREPARO", "time=" timeDoRodizio " papel=tank inicio_tick=" preparoTankTick " fim_tick=" A_TickCount " duracao_ms=" (A_TickCount - preparoTankTick) " visual_confirmation=unknown")
         Sleep(SleepAfterTankCombo)
 
         if (timeDoRodizio != TimeAtual || ModoAtual != "Hoenn222")
@@ -62,7 +63,6 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
 
         ControlSend("{" teclaDoSecundario "}", , GameWindow)
         RegistrarChamadaDoSecundario(timeDoRodizio)
-        SalvarEstado()
         ; Se o CD do secundario nao couber aqui, o macro nao estende a espera: o verde do
         ; combo ja avisou antes.
         Sleep(SleepAfterSwitch)
@@ -72,8 +72,9 @@ ExecutarRodizio222(teclaDoTank, teclaDoSecundario, timeDoRodizio, idDoRodizio, o
             return
 
         RegistrarCast(timeDoRodizio, true)
-        SalvarEstado()
+        preparoSecTick := A_TickCount
         ComboSimples()
+        LogDiagnostico("COMBO_PREPARO", "time=" timeDoRodizio " papel=sec inicio_tick=" preparoSecTick " fim_tick=" A_TickCount " duracao_ms=" (A_TickCount - preparoSecTick) " visual_confirmation=unknown")
         Sleep(SleepAfterCombo)
     } finally {
         RodizioAtivo := false

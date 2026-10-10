@@ -49,6 +49,9 @@ TestesIndicador() {
     Pass("M o indicador e a decisao do botao leem o mesmo pendente; o verde nao antecipa o CD")
 
     ; Margem conta desde o instante em que o CD zerou, nao para sempre.
+    ; Este cenario precisa de margem positiva, mesmo se o jogador estiver testando com zero.
+    margemAnterior := Hoenn222_MarginMs
+    Hoenn222_MarginMs := 450
     ResetCase("WAITING_COMBO", 0, 0)
     slotM := SlotDoPokemon(1, false)
     AplicarCast(1, false, MockTick)
@@ -61,6 +64,7 @@ TestesIndicador() {
     MockTick += 600000
     Assert(MsAteCastSeguro(slotM, MockTick) == 0, "N CD zerado ha muito tempo continua pronto, sem exigir margem de novo")
     Pass("N a margem conta a partir do instante em que o CD zerou")
+    Hoenn222_MarginMs := margemAnterior
 
     ; Pedido armado e visivel no quadrado: violeta, e vira verde ao disparar.
     ResetCase("WAITING_COMBO", 0, 0)

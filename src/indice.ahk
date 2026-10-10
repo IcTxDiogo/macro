@@ -21,7 +21,6 @@
 #Include macro\antecipacao_combo.ahk
 #Include macro\antecipacao_troca.ahk
 #Include macro\modos.ahk
-#Include macro\persistencia.ahk
 #Include macro\acoes.ahk
 
 #Include interface\quadrado_central.ahk

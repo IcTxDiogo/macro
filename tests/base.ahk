@@ -2,14 +2,19 @@
 global Sent := [], Timeline := [], Scheduled := [], Rendered := []
 global FaultDebt := false, FaultLogger := false, FaultSend := false, FaultTooltip := false
 global WindowAvailable := true, RealInvalidWindow := false
+global WindowFocused := true, MockWindowX := 10, MockWindowY := 20
 global MockInput := {bRightTrigger: 0, bLeftTrigger: 0, wButtons: 0,
     sThumbLX: 0, sThumbLY: 0, sThumbRX: 0, sThumbRY: 0}
 global PassCount := 0
+global MockAdvanceTime := false, MockSendMs := 0, MockCheckCast := false, MockSimCasts := 0
 RunTests()
 ExitApp(0)
 
 MockControlSend(keys, control := "", window := "") {
     global Sent, Timeline, FaultSend, RealInvalidWindow
+    global MockTick
+    if MockAdvanceTime
+        MockTick += MockSendMs
     Timeline.Push("send:" keys)
     if RealInvalidWindow {
         ; Único ControlSend real: destino sintético inexistente, nunca a janela do jogo.
@@ -20,16 +25,33 @@ MockControlSend(keys, control := "", window := "") {
     Sent.Push(keys)
 }
 MockSleep(ms) {
-    global Timeline
+    global Timeline, MockTick
     Timeline.Push("sleep:" ms)
+    if MockAdvanceTime
+        MockTick += ms
+}
+MockRegistrarCast(time, secundario := false) {
+    global MockSimCasts
+    if MockCheckCast {
+        Assert(MsAteCastSeguro(SlotDoPokemon(time, secundario), MockTick) <= 0.001, "discreto: cast com CD pendente")
+        fora := 0
+        loop 6
+            fora += TaxaDeRecuperacao[A_Index] == Hoenn222_RateOutOfBall ? 1 : 0
+        Assert(fora == 1, "discreto: apenas um Pokemon fora em cada cast")
+        MockSimCasts++
+    }
+    RealRegistrarCast(time, secundario)
 }
 MockWinExist(*) {
     global WindowAvailable
     return WindowAvailable ? 123 : 0
 }
+MockWinActive(*) {
+    return WindowAvailable && WindowFocused ? 123 : 0
+}
 MockWinGetPos(&x := unset, &y := unset, &width := unset, &height := unset, *) {
-    x := 10
-    y := 20
+    x := MockWindowX
+    y := MockWindowY
     width := 13
     height := 18
 }
@@ -67,7 +89,10 @@ MockTeamLogger(team, mode) {
 }
 ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     global
+    FaultTooltip := false
+    DesenharPainel() ; invalida tambem o cache visual entre casos isolados
     TimeAtual := 1
+    MockAdvanceTime := false, MockSendMs := 0, MockCheckCast := false, MockSimCasts := 0
     RodizioAtivo := false
     ModoAtual := "Hoenn222"
     FaseAtual := state
@@ -87,6 +112,8 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     global PlanoEmCache := false
     AvisoDeTierDesconhecidoFeito := false
     Hoenn222_CdOptimizerEnabled := true
+    Hoenn222_InBallWholeBlocks := false
+    Hoenn222_UseDiscretePlanner := false ; grupos legados verificam o rollback
     ResetarCooldowns(MockTick)
     ; Os testes antigos partem de times que ja fizeram o primeiro cast; a primeira
     ; volta tem os grupos proprios (W) e liga o ritmo com TeamCasted := false.
@@ -102,6 +129,7 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     Sent := [], Timeline := [], Scheduled := [], Rendered := []
     FaultDebt := false, FaultLogger := false, FaultSend := false, FaultTooltip := false
     WindowAvailable := true, RealInvalidWindow := false
+    WindowFocused := true, MockWindowX := 10, MockWindowY := 20
     MockInput.bRightTrigger := 0
     MockInput.wButtons := 0
     InicioDoComboTick := 0
@@ -143,7 +171,7 @@ Pass(name) {
 AssertAcceptedSequence() {
     global Sent, Timeline, TimeAtual
     Assert(Join(Sent) == "{3}|{c}|{t}|{c}|{e}", "primary + Pokestop + FullDef + trigger Pokestop + UsarPocao")
-    Assert(InStr(Join(Timeline), "sleep:800"), "SleepAfterSwitch preserved")
+    Assert(InStr(Join(Timeline), "sleep:" SleepAfterSwitch), "SleepAfterSwitch preserved")
     Assert(TimeAtual == 2, "requested team committed")
 }
 
@@ -162,7 +190,9 @@ RunTests() {
         TestesAtrasoDeSaida()
         TestesBotaoUnico()
         TestesConfig()
-        TestesPersistencia()
+        TestesBlocosBall()
+        TestesPlanejadorDiscreto()
+        TestesPainel()
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")
     } catch as e {
         FileAppend("FAIL: " e.Message " | " e.What " | line=" e.Line "`n", "*", "UTF-8")

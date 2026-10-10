@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 ; Cooldown individual dos 6 Pokemon.
 ;
 ; Cada Pokemon tem um "slot": (time - 1) * 2 + 1 para o tank e + 2 para o secundario.
@@ -15,6 +15,8 @@ global CooldownRestanteMs := [0, 0, 0, 0, 0, 0]
 global TaxaDeRecuperacao := [0, 0, 0, 0, 0, 0]
 ; Instante a partir do qual CooldownRestanteMs volta a correr (no futuro = congelado).
 global CooldownContaDesdeTick := [0, 0, 0, 0, 0, 0]
+; Fracao do bloco configurado: sobrevive as leituras; reinicia na transicao de Ball/cast.
+global CooldownFracaoBallMs := [0, 0, 0, 0, 0, 0]
 ; Instante estimado em que o CD zerou. A margem de seguranca conta a partir dele: sem
 ; isso, um CD zerado ha minutos continuaria exigindo a margem inteira e o verde nunca
 ; acenderia.
@@ -22,6 +24,7 @@ global CooldownZerouTick := [0, 0, 0, 0, 0, 0]
 ; O tank de cada time ja castou desde o F8/inicio? Enquanto nao, o verde do COMBAR segue
 ; o ritmo do plano (ver FaltaParaLureDaPrimeiraVoltaMs).
 global TankJaCastou := Map(1, false, 2, false, 3, false)
+global ChamadaDoSecundarioTick := [0, 0, 0] ; ancora real da janela fora, nao previsao
 
 ; --- Registro de eventos do jogo -------------------------------------------------------
 ; Falha aqui nunca cancela o combo: o erro vai para o log e o macro segue.
@@ -43,14 +46,17 @@ RegistrarCast(time, secundario := false) {
 RegistrarChamadaDoSecundario(time) {
     global Hoenn222_CdOptimizerEnabled, Hoenn222_RateOutOfBall, Hoenn222_RateInBall
     global Hoenn222_ExitLatencySecondaryMs
+    global ChamadaDoSecundarioTick
     if !Hoenn222_CdOptimizerEnabled
         return
     try {
         tick := A_TickCount
+        ChamadaDoSecundarioTick[Integer(time)] := tick
         DefinirTaxaDeRecuperacao(SlotDoPokemon(time, false), Hoenn222_RateInBall, tick)
         LogarEntradaEmCampo(time, true, tick)
         DefinirTaxaDeRecuperacao(SlotDoPokemon(time, true), Hoenn222_RateOutOfBall,
             tick, Hoenn222_ExitLatencySecondaryMs)
+        LogDiagnostico("CD_CHAMADA", "time=" time " tick=" tick " cast_sec_estimado_tick=" (tick + SleepAfterSwitch) " visual_confirmation=unknown")
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=cd_call", e)
     }
@@ -74,13 +80,17 @@ RegistrarTrocaDeTime(timeAnterior, proximoTime, tick) {
 ; F8: nada se sabe do estado do jogo, entao os seis comecam prontos e dentro da Ball.
 ResetarCooldowns(tick) {
     global CooldownRestanteMs, TaxaDeRecuperacao, CooldownContaDesdeTick, CooldownZerouTick
+    global CooldownFracaoBallMs
     global TankJaCastou, Hoenn222_RateInBall
+    global ChamadaDoSecundarioTick
+    ChamadaDoSecundarioTick := [0, 0, 0]
     TankJaCastou := Map(1, false, 2, false, 3, false)
     loop 6 {
         CooldownRestanteMs[A_Index] := 0
         TaxaDeRecuperacao[A_Index] := Hoenn222_RateInBall
         CooldownContaDesdeTick[A_Index] := tick
         CooldownZerouTick[A_Index] := 0
+        CooldownFracaoBallMs[A_Index] := 0
     }
 }
 
@@ -118,7 +128,18 @@ MsAteCastSeguro(slot, tick) {
     }
     taxa := TaxaDeRecuperacao[slot] > 0 ? TaxaDeRecuperacao[slot] : 1
     congeladoMs := CooldownContaDesdeTick[slot] > tick ? CooldownContaDesdeTick[slot] - tick : 0
+    if UsarBlocosNaBall(slot)
+        return congeladoMs + Ceil(CooldownRestanteMs[slot] / CreditoDoBlocoBallMs()) * Hoenn222_InBallBlockMs
+            - CooldownFracaoBallMs[slot] + Hoenn222_MarginMs
     return congeladoMs + CooldownRestanteMs[slot] / taxa + Hoenn222_MarginMs
+}
+
+UsarBlocosNaBall(slot) {
+    return Hoenn222_InBallWholeBlocks && TaxaDeRecuperacao[slot] == Hoenn222_RateInBall
+}
+
+CreditoDoBlocoBallMs() {
+    return Hoenn222_InBallBlockMs * Hoenn222_RateInBall
 }
 
 ; CD principal do Pokemon pelo rotulo do tier (config). Rotulo fora da tabela usa o padrao
@@ -149,14 +170,29 @@ CooldownBaseMs(time, secundario := false) {
 ; Atualiza o slot ate `tick`. Intervalo negativo (tick no futuro = congelado) nao credita.
 AtualizarCooldown(slot, tick) {
     global CooldownRestanteMs, TaxaDeRecuperacao, CooldownContaDesdeTick, CooldownZerouTick
+    global CooldownFracaoBallMs
     decorridoMs := tick - CooldownContaDesdeTick[slot]
     if (decorridoMs <= 0)
         return
-    restanteMs := CooldownRestanteMs[slot] - decorridoMs * TaxaDeRecuperacao[slot]
+    blocos := UsarBlocosNaBall(slot)
+    fracaoAnterior := CooldownFracaoBallMs[slot]
+    if blocos {
+        totalBallMs := fracaoAnterior + decorridoMs
+        completos := Floor(totalBallMs / Hoenn222_InBallBlockMs)
+        recuperadoMs := completos * CreditoDoBlocoBallMs()
+        CooldownFracaoBallMs[slot] := Mod(totalBallMs, Hoenn222_InBallBlockMs)
+    } else {
+        recuperadoMs := decorridoMs * TaxaDeRecuperacao[slot]
+    }
+    restanteMs := CooldownRestanteMs[slot] - recuperadoMs
     if (restanteMs <= 0) {
         ; Zerou dentro deste intervalo: guarda o instante exato.
-        if (CooldownRestanteMs[slot] > 0 && TaxaDeRecuperacao[slot] > 0)
-            CooldownZerouTick[slot] := CooldownContaDesdeTick[slot] + CooldownRestanteMs[slot] / TaxaDeRecuperacao[slot]
+        if (CooldownRestanteMs[slot] > 0 && TaxaDeRecuperacao[slot] > 0) {
+            ateZeroMs := blocos
+                ? Ceil(CooldownRestanteMs[slot] / CreditoDoBlocoBallMs()) * Hoenn222_InBallBlockMs - fracaoAnterior
+                : CooldownRestanteMs[slot] / TaxaDeRecuperacao[slot]
+            CooldownZerouTick[slot] := CooldownContaDesdeTick[slot] + ateZeroMs
+        }
         restanteMs := 0
     }
     CooldownRestanteMs[slot] := restanteMs
@@ -167,7 +203,10 @@ AtualizarCooldown(slot, tick) {
 ; (sair da Ball custa o atraso; voltar para ela e imediato).
 DefinirTaxaDeRecuperacao(slot, taxa, tick, atrasoMs := 0) {
     global TaxaDeRecuperacao, CooldownContaDesdeTick
+    global CooldownFracaoBallMs
     AtualizarCooldown(slot, tick)
+    if (taxa != TaxaDeRecuperacao[slot])
+        CooldownFracaoBallMs[slot] := 0
     TaxaDeRecuperacao[slot] := taxa
     if (atrasoMs > 0)
         CooldownContaDesdeTick[slot] := tick + atrasoMs
@@ -178,18 +217,23 @@ DefinirTaxaDeRecuperacao(slot, taxa, tick, atrasoMs := 0) {
 ; da Ball, entao a taxa passa a Hoenn222_RateOutOfBall.
 AplicarCast(time, secundario, tick) {
     global CooldownRestanteMs, TaxaDeRecuperacao, CooldownContaDesdeTick, TankJaCastou
+    global CooldownFracaoBallMs
     global Hoenn222_LatencyMs, Hoenn222_MarginMs, Hoenn222_RateOutOfBall
     slot := SlotDoPokemon(time, secundario)
     if !secundario
         TankJaCastou[Integer(time)] := true
     AtualizarCooldown(slot, tick)
+    restanteAntesMs := CooldownRestanteMs[slot]
+    fracaoAntesMs := CooldownFracaoBallMs[slot]
+    CooldownFracaoBallMs[slot] := 0
     TaxaDeRecuperacao[slot] := Hoenn222_RateOutOfBall
     CooldownRestanteMs[slot] := CooldownBaseMs(time, secundario)
     CooldownContaDesdeTick[slot] := tick + Hoenn222_LatencyMs
     prontoTick := tick + Hoenn222_LatencyMs + CooldownRestanteMs[slot]
     LogDiagnostico("CD_CAST", "slot=" slot " time=" time " papel=" (secundario ? "sec" : "tank")
         " cd_main=" CooldownRestanteMs[slot] " tick=" tick " cd_comeca=" CooldownContaDesdeTick[slot]
-        " pronto=" prontoTick " seguro=" (prontoTick + Hoenn222_MarginMs))
+        " pronto=" prontoTick " seguro=" (prontoTick + Hoenn222_MarginMs)
+        " modelo_antes_ms=" Round(restanteAntesMs) " fracao_ball_antes_ms=" Round(fracaoAntesMs))
 }
 
 ; Diagnostico (so log): o CD que o MODELO espera de um Pokemon quando ele entra em campo.
@@ -201,6 +245,7 @@ LogarEntradaEmCampo(time, secundario, tick) {
         AtualizarCooldown(slot, tick)
         LogDiagnostico("CD_ENTRADA", "slot=" slot " time=" time " papel=" (secundario ? "sec" : "tank")
             " cd_modelo_ms=" Round(CooldownRestanteMs[slot]) " taxa=" TaxaDeRecuperacao[slot]
+            " fracao_ball_ms=" Round(CooldownFracaoBallMs[slot])
             " pronto_em_ms=" Round(MsAteCastSeguro(slot, tick)))
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=cd_entrada", e)

@@ -7,18 +7,22 @@
 AtualizarInterface(controleConectado := true) {
     static ultimoErro := ""
     try {
+        janelaExiste := WinExist(GameWindow)
+        if (janelaExiste && !WinActive(GameWindow)) {
+            DesenharQuadradoCentral()
+            DesenharPainel()
+            return
+        }
         if !controleConectado {
             DesenharQuadradoCentral()
-            if WinExist(GameWindow) {
+            if janelaExiste {
                 WinGetPos(&janelaX, &janelaY, , , GameWindow)
-                CoordMode("ToolTip", "Screen")
-                ToolTip("Controle Desconectado", janelaX + 210, janelaY)
+                DesenharPainel("Controle Desconectado", janelaX + 210, janelaY)
             } else {
-                ToolTip("Controle Desconectado", 210, 0)
+                DesenharPainel("Controle Desconectado", 210, 0)
             }
-        } else if WinExist(GameWindow) {
+        } else if janelaExiste {
             WinGetPos(&janelaX, &janelaY, , , GameWindow)
-            CoordMode("ToolTip", "Screen")
             texto := TextoDeStatus
             if (ModoAtual == "Hoenn222") {
                 texto := TextoDoPainel()
@@ -28,9 +32,10 @@ AtualizarInterface(controleConectado := true) {
             } else {
                 DesenharQuadradoCentral()
             }
-            ToolTip(texto TextoDosProblemasDeConfig(), janelaX + 210, janelaY + 30, 1)
+            DesenharPainel(texto TextoDosProblemasDeConfig(), janelaX + 210, janelaY + 30)
         } else {
             DesenharQuadradoCentral()
+            DesenharPainel()
         }
         ultimoErro := ""
     } catch as e {
@@ -42,14 +47,34 @@ AtualizarInterface(controleConectado := true) {
     }
 }
 
+; Mesmo principio do quadrado central: redesenhar so se texto/posicao mudarem.
+; Ocultar invalida o cache; so confirmar o novo desenho depois de ToolTip funcionar.
+DesenharPainel(texto := "", x := 0, y := 0) {
+    static visivel := false, ultimoTexto := "", ultimoX := 0, ultimoY := 0
+    if (texto == "") {
+        if visivel
+            ToolTip(, , , 1)
+        visivel := false
+        ultimoTexto := ""
+        return
+    }
+    if (visivel && texto == ultimoTexto && x == ultimoX && y == ultimoY)
+        return
+    CoordMode("ToolTip", "Screen")
+    ToolTip(texto, x, y, 1)
+    visivel := true
+    ultimoTexto := texto
+    ultimoX := x
+    ultimoY := y
+}
+
 ; Texto do painel no modo 2-2-2: fase atual, tiers do time e pedidos armados.
 TextoDoPainel() {
     global TimeAtual, FaseAtual, ComboArmado, TrocaArmada
 
     texto := "HOENN 2-2-2 | TIME " TimeAtual "`n`n"
-
     if (FaseAtual == "WAITING_FIRST_COMBO") {
-        texto .= "Aguardando sincronizacao`n(execute 1 combo)`n"
+        texto .= "Aguardando primeiro combo`n"
     } else if (FaseAtual == "WAITING_TEAM_SWITCH") {
         proximoTime := (TimeAtual >= 3) ? 1 : (TimeAtual + 1)
         texto .= "TROCAR TIME`n`nPróx: TIME " proximoTime "`n"
@@ -67,7 +92,8 @@ TextoDoPainel() {
         if (FaseAtual == "WAITING_COMBO" && Hoenn222_CdOptimizerEnabled) {
             bloqueio := QuemBloqueiaOCombo(TimeAtual)
             if (bloqueio == "secundario") {
-                texto .= "secundario CD +" Round(CooldownPendenteDoSecundarioMs(TimeAtual, 0) / 1000, 1) "s`n"
+                ; Arredondamento so visual: o verde e os pedidos usam milissegundos reais.
+                texto .= "secundario CD +" Ceil(CooldownPendenteDoSecundarioMs(TimeAtual, 0) / 1000) "s`n"
             } else if (bloqueio == "tank") {
                 texto .= "tank em CD`n"
             } else if (bloqueio == "primeira_volta") {

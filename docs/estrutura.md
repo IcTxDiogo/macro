@@ -39,7 +39,6 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | `macro/troca_time.ahk` | `TrocarDeTime`: validacao, envio, estado |
 | `macro/rodizio_222.ahk` | rodizio do modo 2-2-2 (registra cast e chamada no `tempo`) |
 | `macro/antecipacao*.ahk` | combo e troca armados (verde automatico) e emergencia (duplo clique) |
-| `macro/persistencia.ahk` | salva o modelo a cada evento e o restaura no reload (menos de 3 min) |
 | `macro/modos.ahk` | `TrocarModo` e `Resincronizar` (F8) |
 | `macro/acoes.ahk` | acao de cada botao conforme o modo; `PedirProximaAcao` e o botao unico do 2-2-2 |
 | `interface/controle.ahk` | laco de 30 ms: XInput, movimento, botoes -> acoes |
@@ -84,14 +83,33 @@ em ordem; todas usam `global`, entao um grupo le o que o anterior criou).
 
 ## Reiniciar e instancia unica
 
-- **Reload (Ctrl+Esc / Start):** funciona com o jogo fechado. O estado do modelo e salvo a
-  cada evento em `logs\estado_do_macro.txt` e restaurado no boot se tiver menos de 3 min e for
-  da mesma sessao do Windows (`Hoenn222_RestoreStateOnReload`). F8 continua zerando de proposito.
+- **Reload (Ctrl+Esc / Start) ou reabrir:** sempre comeca do zero, no modo Hoenn 2-2-2,
+  time 1 e fase de primeiro combo, sem pedidos ou cooldowns anteriores. Funciona com o jogo
+  fechado. Nao salva nem restaura estado entre execucoes.
+- **F8:** zera o modelo e a fase mantendo o time atual.
 - **Instancia unica:** um mutex da maquina impede duas copias do macro (que leriam o mesmo
   controle e mandariam teclas em dobro). No reload a nova espera ate 3 s pela antiga sair.
 - **Log de diagnostico:** acima de 5 MB vira `.old` no boot.
 
 ## Diagnostico do cooldown (comparar com a barra de golpes do jogo)
+
+Modelo empirico `Hoenn222_InBallWholeBlocks=true`: dentro da Ball, o acumulador credita a cada
+`Hoenn222_InBallBlockMs` completos (2000 ms: 1 s de cooldown com taxa 0,5).
+A fracao sobrevive a leituras e e descartada
+ao sair. Fora, continua 1,0. O verde e a previsao do secundario usam os blocos; o plano de
+janelas tambem resolve blocos inteiros com `Hoenn222_UseDiscretePlanner=true`.
+Com false, o plano volta a ser um piso nominal continuo e o verde ainda usa o acumulador.
+`CD_PLAN` registra `modelo_ball=blocos_2s`, `bloco_ball_ms=2000`,
+`credito_ball_ms=1000`, `plano_piso_continuo=0` no planejador atual (1 no anterior).
+Nao e uma regra comprovada do servidor. false volta ao modelo continuo. Sleeps fisicos,
+tiers e compensacoes nao sao alterados ao ligar a opcao.
+
+O painel e o quadrado central usam cache visual de texto/posicao. O painel oculta ao perder
+foco ou fechar o jogo, invalidando seu cache, e volta a desenhar ao retornar. O contador do
+secundario usa segundos inteiros apenas na apresentacao; o verde continua em milissegundos.
+
+`CD_CAST` inclui `modelo_antes_ms` e `fracao_ball_antes_ms`; continua sendo registro do
+comando previsto, nao confirmacao de execucao. A gravacao deve confirmar os casts aceitos.
 
 | Evento | Quando | Campos |
 | --- | --- | --- |
@@ -100,7 +118,6 @@ em ordem; todas usam `global`, entao um grupo le o que o anterior criou).
 | `CD_ENTRADA` | Pokemon entra em campo (troca ou chamada) | `cd_modelo_ms`, `taxa`, `pronto_em_ms` |
 | `NEXT_ACTION` | botao apertado no 2-2-2 | `source`, `phase`, `action` (combo ou troca), `team` |
 | `CONFIG_PROBLEMA` | config invalido ao carregar | `detalhe` |
-| `STATE_RESTORED` / `STATE_RESTORE_SKIPPED` | boot depois de reload | `age_s`, `mode`, `team`, `state` / `reason` |
 | `INSTANCIA_DUPLICADA` | outra copia ja roda | `path` |
 | `LOOP_STALL` | laco de 30 ms parado > 400 ms | `gap_ms`, `state` |
 
