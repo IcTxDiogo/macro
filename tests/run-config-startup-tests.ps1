@@ -50,7 +50,7 @@ $cases = @(
 )
 foreach ($case in $cases) {
     $source = "$stubs`r`n$config`r`n$($case.Override)`r`n$modules`r`n$entry`r`nExitApp(0)"
-    $source = [regex]::Replace($source, '\b(ControlSend|XInput_GetState|SetTimer)\s*\(', 'BootSemEntrada(')
+    $source = [regex]::Replace($source, '\b(ControlClick|ControlSend|XInput_GetState|SetTimer)\s*\(', 'BootSemEntrada(')
     $source = [regex]::Replace($source, "(?<!`r)`n", "`r`n")
     $path = Join-Path $testDirectory ($case.Name + '.ahk')
     [IO.File]::WriteAllText($path, $source, [Text.UTF8Encoding]::new($true))

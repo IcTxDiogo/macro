@@ -7,6 +7,8 @@ global ModoAtual := "Hoenn222"        ; "Normal" ou "Hoenn222" (F12 / botao Back
 global TextoDeStatus := "Modo: Hoenn 2-2-2 - Time: 1"
 global TimeAtual := 1                 ; time pedido (1 a 3); a entrada visual nao e confirmada
 global RodizioAtivo := false          ; trava: um rodizio por vez
+global UltimaBallEspecial := 0         ; somente memoria; reload/reabrir volta para ball 1
+global RenovacaoDailyAtiva := false    ; impede renovacoes sobrepostas
 
 ; --- Fase do ciclo 2-2-2 ---
 ; FaseAtual: "WAITING_FIRST_COMBO", "WAITING_COMBO" (COMBAR) ou "WAITING_TEAM_SWITCH" (TROCAR TIME).

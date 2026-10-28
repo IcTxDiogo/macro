@@ -37,7 +37,7 @@ $source = [regex]::Replace($source, '(?m)^RegistrarTrocaNoLog\(', 'RealTeamLogge
 $source = [regex]::Replace($source, '(?m)^DesenharQuadradoCentral\(', 'RealCentralTooltip(')
 $source = [regex]::Replace($source, '(?m)^RegistrarCast\(', 'RealRegistrarCast(')
 foreach ($entry in @{
-    'ControlSend' = 'MockControlSend'; 'Sleep' = 'MockSleep'; 'WinExist' = 'MockWinExist';
+    'ControlClick' = 'MockControlClick'; 'ControlSend' = 'MockControlSend'; 'Sleep' = 'MockSleep'; 'WinExist' = 'MockWinExist';
     'WinActive' = 'MockWinActive'; 'WinGetPos' = 'MockWinGetPos'; 'ToolTip' = 'MockToolTip';
     'SetTimer' = 'MockSetTimer'; 'XInput_GetState' = 'MockXInput';
     'DesenharQuadradoCentral' = 'MockCentralTooltip';

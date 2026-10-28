@@ -33,6 +33,12 @@ MockSleep(ms) {
     if IsObject(MockSleepHook)
         MockSleepHook.Call(ms)
 }
+MockControlClick(posicao, janela, control := "", botao := "", quantidade := 1, opcoes := "") {
+    if FaultSend
+        throw Error("simulated ControlClick failure")
+    Sent.Push(posicao "|" janela "|" opcoes)
+    Timeline.Push("click:" posicao)
+}
 MockRegistrarCast(time, secundario := false) {
     global MockSimCasts
     if MockCheckCast {
@@ -99,6 +105,12 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     TimeAtual := 1
     MockAdvanceTime := false, MockSendMs := 0, MockCheckCast := false, MockSimCasts := 0
     RodizioAtivo := false
+    UltimaBallEspecial := 0
+    RenovacaoDailyAtiva := false
+    KeyBallSpecial := "p", KeyBallSpecial2 := "", KeyBallSpecial3 := ""
+    GuildDailyRenewPos := {X: 0, Y: 0}
+    GuildDailyConfirmPos := {X: 0, Y: 0}
+    GuildDailyConfirmDelayMs := 300
     ModoAtual := "Hoenn222"
     FaseAtual := state
     InicioDaFaseTick := MockTick - elapsed
@@ -196,6 +208,7 @@ RunTests() {
         TestesAtrasoDeSaida()
         TestesBotaoUnico()
         TestesConfig()
+        TestesBallsEDaily()
         TestesBlocosBall()
         TestesPlanejadorDiscreto()
         TestesPainel()

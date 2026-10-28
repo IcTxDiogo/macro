@@ -32,7 +32,7 @@ $source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
 $source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')
 $source = [regex]::Replace($source, '(?m)^RegistrarTrocaNoLog\(', 'RealTeamLogger(')
 foreach ($entry in @{
-    'ControlSend' = 'MockControlSend'; 'WinExist' = 'MockWinExist'; 'WinActive' = 'MockWinExist';
+    'ControlClick' = 'MockControlClick'; 'ControlSend' = 'MockControlSend'; 'WinExist' = 'MockWinExist'; 'WinActive' = 'MockWinExist';
     'WinGetPos' = 'MockWinGetPos'; 'XInput_GetState' = 'MockXInput';
     'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'
 }.GetEnumerator()) {
@@ -44,10 +44,15 @@ $header = @"
 global MockTick := 100000
 global GameLoopTicks := []
 global Scenario := A_Args[1]
+global DailyClicks := 0
 Persistent()
 SetTimer(Run, -1)
 
 MockControlSend(*) {
+}
+MockControlClick(*) {
+    global DailyClicks
+    DailyClicks++
 }
 MockWinExist(*) {
     return 123
@@ -63,7 +68,7 @@ MockWinGetPos(&x := unset, &y := unset, &width := unset, &height := unset, *) {
 MockXInput(*) {
     global GameLoopTicks
     GameLoopTicks.Push(A_TickCount)
-    return {bRightTrigger: 0, bLeftTrigger: 0, wButtons: 0, sThumbLX: 0, sThumbLY: 0, sThumbRX: 0, sThumbRY: 0}
+    return {bRightTrigger: 0, bLeftTrigger: 0, wButtons: Scenario = "daily" ? 0x4000 : 0, sThumbLX: 0, sThumbLY: 0, sThumbRX: 0, sThumbRY: 0}
 }
 MockBaseTarget(state, team) {
     return RealBaseTarget(state, team)
@@ -81,7 +86,11 @@ Run() {
         FileDelete(ArquivoDiagnostico)
     TankJaCastou := Map(1, false, 2, false, 3, false)
     ResetarCooldowns(A_TickCount)
-    if (Scenario = "combo") {
+    if (Scenario = "daily") {
+        GuildDailyRenewPos := {X: 318, Y: 205}
+        GuildDailyConfirmPos := {X: 747, Y: 455}
+        GuildDailyConfirmDelayMs := 600
+    } else if (Scenario = "combo") {
         ; ritmo da 1a volta libera o COMBAR em ~1,5 s; o pedido fica armado
         FaseAtual := "WAITING_COMBO"
         InicioDaFaseTick := A_TickCount - (PlanejarVolta().Lures[1] - 1500)
@@ -105,13 +114,15 @@ Fim() {
     }
     texto := FileExist(ArquivoDiagnostico) ? FileRead(ArquivoDiagnostico) : ""
     disparou := InStr(texto, "COMBO_FIRED") || InStr(texto, "SWITCH_FIRED")
+    if (Scenario = "daily")
+        disparou := DailyClicks == 2 && !RenovacaoDailyAtiva
     Log(Scenario "|" maxg "|" GameLoopTicks.Length "|" (disparou ? 1 : 0))
     ExitApp(0)
 }
 "@
 
 $falhou = $false
-foreach ($cenario in 'combo', 'troca') {
+foreach ($cenario in 'combo', 'troca', 'daily') {
     $dir = Join-Path $env:TEMP ('macro-live-stall-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir | Out-Null
     $script = [regex]::Replace("$header`r`n$source", "(?<!`r)`n", "`r`n")

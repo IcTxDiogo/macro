@@ -15,6 +15,8 @@ global KeyPokestop := "c"
 global KeyMedicine := "f"
 global KeyCombo := "i"
 global KeyBallSpecial := "p"
+global KeyBallSpecial2 := ""          ; opcional: vazio pula esta ball
+global KeyBallSpecial3 := ""          ; opcional: vazio pula esta ball
 global KeyRevive := "Space"
 global KeyBuffMove := "f1"
 global KeyPotion := "e"
@@ -27,6 +29,13 @@ global PlayerOriginX := 936
 global PlayerOriginY := 402
 global Hoenn222CenterOffsetX := 0     ; quadrado central do indicador
 global Hoenn222CenterOffsetY := -60
+
+; --- Guild daily (X / direcional direito, nos dois modos) ---
+; Coordenadas da area CLIENTE do jogo (Window Spy: Client), nao da tela.
+; Deixar 0 desativa a renovacao ate configurar os dois botoes.
+global GuildDailyRenewPos := {X: 0, Y: 0}
+global GuildDailyConfirmPos := {X: 0, Y: 0}
+global GuildDailyConfirmDelayMs := 300 ; espera entre renovar e confirmar
 
 ; --- Hoenn 2-2-2: duplas (editar ao trocar de respawn ou de time) ---
 ; Tier do tank e do secundario de cada dupla (1, 2 e 3). O rotulo define o CD pela
@@ -43,7 +52,7 @@ global Hoenn222_ComboPreparationMs := 235 ; estimativa do preparo ja existente, 
 ; Nao alteram recuperacao, latencia ou MarginMs: exigem distancia dos limites no plano.
 global Hoenn222_PlannerOutReserveMs := 300
 global Hoenn222_PlannerBallReserveMs := 500
-global Hoenn222_CdByTier := Map("Lendário", 40000, "UR", 43000, "SR", 45000, "T1", 50000)
+global Hoenn222_CdByTier := Map("Mythic", 35000, "Lendário", 40000, "UR", 43000, "SR", 45000, "T1", 50000)
 global Hoenn222_CdDefaultMs := 50000  ; rotulo desconhecido
 global Hoenn222_RateOutOfBall := 1.0  ; recuperacao de CD por segundo, fora da Ball
 global Hoenn222_RateInBall := 0.5     ; e dentro da Ball

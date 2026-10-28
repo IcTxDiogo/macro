@@ -44,8 +44,9 @@ AcaoFaceDown() {
     AtivarBuffLure()
 }
 
-; Botao livre no respawn atual.
+; X / direcional direito: renovar a guild daily.
 AcaoFaceRight() {
+    RenovarGuildDaily()
 }
 
 AcaoFaceLeft() {

@@ -22,8 +22,60 @@ ComboSimples(contextoValido := false) {
 }
 
 CapturarAlvo() {
-    if WinExist(GameWindow) {
-        ControlSend("{" KeyBallSpecial "}", , GameWindow)
+    global UltimaBallEspecial
+    if !WinExist(GameWindow)
+        return
+    teclas := [KeyBallSpecial, KeyBallSpecial2, KeyBallSpecial3]
+    loop 3 {
+        indice := Mod(UltimaBallEspecial + A_Index - 1, 3) + 1
+        if (teclas[indice] = "")
+            continue
+        try {
+            ControlSend("{" teclas[indice] "}", , GameWindow)
+            UltimaBallEspecial := indice
+            LogDiagnostico("BALL_SPECIAL", "ball=" indice)
+            return true
+        } catch as e {
+            LogDiagnostico("SWITCH_ERROR", "phase=capture ball=" indice, e)
+            return false
+        }
+    }
+    return false
+}
+
+PosicaoDailyValida(posicao) {
+    return IsObject(posicao) && posicao.HasOwnProp("X") && posicao.HasOwnProp("Y")
+        && IsInteger(posicao.X) && IsInteger(posicao.Y) && posicao.X > 0 && posicao.Y > 0
+}
+
+RenovarGuildDaily() {
+    global RenovacaoDailyAtiva
+    if RenovacaoDailyAtiva
+        return false
+    if (!PosicaoDailyValida(GuildDailyRenewPos) || !PosicaoDailyValida(GuildDailyConfirmPos)) {
+        LogDiagnostico("DAILY_IGNORADA", "motivo=configure_as_duas_posicoes")
+        return false
+    }
+    if (!IsInteger(GuildDailyConfirmDelayMs) || GuildDailyConfirmDelayMs < 0)
+        return false
+    janela := WinExist(GameWindow)
+    if !janela
+        return false
+    RenovacaoDailyAtiva := true
+    try {
+        ControlClick("x" GuildDailyRenewPos.X " y" GuildDailyRenewPos.Y, "ahk_id " janela, , "Left", 1, "NA Pos")
+        Sleep(GuildDailyConfirmDelayMs)
+        ; Nao confirmar em outra janela se o cliente fechar durante a espera.
+        if (WinExist(GameWindow) != janela)
+            return false
+        ControlClick("x" GuildDailyConfirmPos.X " y" GuildDailyConfirmPos.Y, "ahk_id " janela, , "Left", 1, "NA Pos")
+        LogDiagnostico("DAILY_RENOVACAO", "cliques_enviados=2")
+        return true
+    } catch as e {
+        LogDiagnostico("SWITCH_ERROR", "phase=guild_daily", e)
+        return false
+    } finally {
+        RenovacaoDailyAtiva := false
     }
 }
 
