@@ -8,8 +8,28 @@ global MockInput := {bRightTrigger: 0, bLeftTrigger: 0, wButtons: 0,
 global PassCount := 0
 global MockAdvanceTime := false, MockSendMs := 0, MockCheckCast := false, MockSimCasts := 0
 global MockSleepHook := false
+global MockCheckCast15 := false, MockSimCasts15 := 0
 RunTests()
 ExitApp(0)
+
+; Modo 1,5: confere cada cast (CD do relogio zerado e um so Pokemon fora) antes de registrar.
+MockRegistrarCast15(time, papel) {
+    global MockSimCasts15
+    if MockCheckCast15 {
+        relogio := Relogio15(time, papel)
+        faltaMs := MsAteCastSeguro(relogio, MockTick)
+        Assert(faltaMs <= 0.001, "1,5: cast com CD pendente papel=" papel " time=" time " falta_ms=" Round(faltaMs, 3))
+        fora := 0
+        loop 2 {
+            timeDoPokemon := A_Index
+            loop 3
+                fora += TaxaDeRecuperacao[RelogiosDaPosicao15(timeDoPokemon, A_Index)[1]] == Hoenn222_RateOutOfBall ? 1 : 0
+        }
+        Assert(fora == 1, "1,5: apenas um Pokemon fora em cada cast (fora=" fora ")")
+        MockSimCasts15++
+    }
+    RealRegistrarCast15(time, papel)
+}
 
 MockControlSend(keys, control := "", window := "") {
     global Sent, Timeline, FaultSend, RealInvalidWindow
@@ -128,7 +148,14 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     CooldownContaDesdeTick := [0, 0, 0, 0, 0, 0]
     global PlanoEmCache := false
     AvisoDeTierDesconhecidoFeito := false
+    ; Modo 1,5: os grupos legados partem do 2-2-2; o grupo do 1,5 liga o resto.
+    Plano15EmCache := false
+    MockCheckCast15 := false, MockSimCasts15 := 0
     Hoenn222_CdOptimizerEnabled := true
+    ; Os tiers do config.ahk sao do jogador e mudam por respawn; os testes legados medem os
+    ; planos de referencia (76,3 s etc.) com estes tiers fixos.
+    Hoenn222_TankTier := Map(1, "SR", 2, "SR", 3, "SR")
+    Hoenn222_SecondTier := Map(1, "Lendário", 2, "UR", 3, "UR")
     Hoenn222_InBallWholeBlocks := false
     Hoenn222_UseDiscretePlanner := false ; grupos legados verificam o rollback
     ResetarCooldowns(MockTick)
@@ -213,6 +240,8 @@ RunTests() {
         TestesPlanejadorDiscreto()
         TestesPainel()
         TestesCancelamentoEMovimento()
+        TestesHoenn15()
+        TestesSkillEmprestada15()
         FileAppend("RESULT: " PassCount " test groups passed; no game commands executed.`n", "*", "UTF-8")
     } catch as e {
         FileAppend("FAIL: " e.Message " | " e.What " | line=" e.Line "`n", "*", "UTF-8")

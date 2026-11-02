@@ -140,7 +140,9 @@ TestesPlanejadorDiscreto() {
     VerificarPedidosArmados()
     Assert(Scheduled.Length == 1, "AO atraso libera uma unica acao armada")
     TrocarModo()
-    Assert(ModoAtual == "Normal" && !ComboArmado, "AO modo normal cancela armado")
+    Assert(ModoAtual == "Hoenn15" && !ComboArmado, "AO trocar de modo cancela armado")
+    TrocarModo()
+    Assert(ModoAtual == "Normal" && !ComboArmado, "AO modo normal sem armado")
     Scheduled[1].Call()
     if (Scheduled.Length > 1)
         Scheduled[2].Call() ; a thread do rodizio valida modo/contexto antes de enviar

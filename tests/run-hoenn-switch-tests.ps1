@@ -36,12 +36,14 @@ $source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')
 $source = [regex]::Replace($source, '(?m)^RegistrarTrocaNoLog\(', 'RealTeamLogger(')
 $source = [regex]::Replace($source, '(?m)^DesenharQuadradoCentral\(', 'RealCentralTooltip(')
 $source = [regex]::Replace($source, '(?m)^RegistrarCast\(', 'RealRegistrarCast(')
+$source = [regex]::Replace($source, '(?m)^RegistrarCast15\(', 'RealRegistrarCast15(')
 foreach ($entry in @{
     'ControlClick' = 'MockControlClick'; 'ControlSend' = 'MockControlSend'; 'Sleep' = 'MockSleep'; 'WinExist' = 'MockWinExist';
     'WinActive' = 'MockWinActive'; 'WinGetPos' = 'MockWinGetPos'; 'ToolTip' = 'MockToolTip';
     'SetTimer' = 'MockSetTimer'; 'XInput_GetState' = 'MockXInput';
     'DesenharQuadradoCentral' = 'MockCentralTooltip';
-    'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'; 'RegistrarCast' = 'MockRegistrarCast'
+    'AlvoDaFaseMs' = 'MockBaseTarget'; 'RegistrarTrocaNoLog' = 'MockTeamLogger'; 'RegistrarCast' = 'MockRegistrarCast';
+    'RegistrarCast15' = 'MockRegistrarCast15'
 }.GetEnumerator()) {
     $source = [regex]::Replace($source, '\b' + $entry.Key + '\s*\(', $entry.Value + '(')
 }

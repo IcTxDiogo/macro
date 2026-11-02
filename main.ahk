@@ -30,13 +30,20 @@ try {
 } catch as erroAoPlanejarInicial {
     LogDiagnostico("SWITCH_ERROR", "phase=initial_plan", erroAoPlanejarInicial)
 }
+; O plano do 1,5 e separado: config do 1,5 invalido nunca impede o 2-2-2.
+try {
+    if Hoenn222_CdOptimizerEnabled
+        PlanejarVolta15()
+} catch as erroAoPlanejar15 {
+    LogDiagnostico("SWITCH_ERROR", "phase=initial_plan_15", erroAoPlanejar15)
+}
 IniciarControle()
 
 ; --- ATALHOS DE TECLADO E MOUSE ---
 ; Reinicia o macro (o botao Start do controle faz o mesmo).
 ^Esc:: ReiniciarMacro()
 
-; Troca de modo (Normal / Hoenn 2-2-2) e ressincronizacao do 2-2-2.
+; Troca de modo (Normal -> Hoenn 2-2-2 -> Hoenn 1,5 -> Normal) e ressincronizacao (F8).
 F12:: TrocarModo()
 F8:: Resincronizar()
 

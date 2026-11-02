@@ -31,18 +31,26 @@ PedirCombo() {
     }
     if (emergencia) {
         LogDiagnostico("COMBO_RESULT", "result=emergency")
-        IniciarRodizio222("emergencia")
+        IniciarRodizioDoModo("emergencia")
         return
     }
     if (faltaMs <= 0) {
         LogDiagnostico("COMBO_RESULT", "result=immediate")
-        IniciarRodizio222("manual")
+        IniciarRodizioDoModo("manual")
         return
     }
 
     ; Antes do verde: arma e registra quem segura e quanto o secundario atrasaria.
-    LogDiagnostico("CD_ANTECIPACAO", "time=" TimeAtual " bloqueio=" QuemBloqueiaOCombo(TimeAtual)
-        " falta_ms=" Round(faltaMs) " sec_cast_ms=" CooldownPendenteDoSecundarioMs(TimeAtual, 0))
+    try {
+        if (ModoAtual == "Hoenn15")
+            LogDiagnostico("CD_ANTECIPACAO", "time=" TimeAtual " modo=1,5 fase=" FaseAtual
+                " bloqueio=" QuemBloqueia15(FaseAtual, TimeAtual) " falta_ms=" Round(faltaMs))
+        else
+            LogDiagnostico("CD_ANTECIPACAO", "time=" TimeAtual " bloqueio=" QuemBloqueiaOCombo(TimeAtual)
+                " falta_ms=" Round(faltaMs) " sec_cast_ms=" CooldownPendenteDoSecundarioMs(TimeAtual, 0))
+    } catch as e {
+        LogDiagnostico("SWITCH_ERROR", "phase=combo_antecipacao_log", e)
+    }
 
     ; Um pedido por vez, sempre preso ao time em que foi feito.
     criticoAnterior := A_IsCritical
@@ -66,7 +74,7 @@ VerificarComboArmado() {
         return
 
     ; O pedido vale para um unico modo e um unico time.
-    if (ModoAtual != "Hoenn222" || TimeAtual != TimeDoComboArmado) {
+    if (!ModoComRodizio() || TimeAtual != TimeDoComboArmado) {
         CancelarPedidosArmados("context_changed")
         return
     }
@@ -93,11 +101,11 @@ VerificarComboArmado() {
     SetTimer(() => DispararComboArmado(timeDoPedido, idDoPedido), -1)
 }
 
-; Thread descartavel do disparo automatico. IniciarRodizio222 consome o pedido junto com a trava.
+; Thread descartavel do disparo automatico. O rodizio do modo consome o pedido junto com a trava.
 DispararComboArmado(timeDoPedido, idDoPedido) {
     global DisparoDoComboPendente
     try {
-        IniciarRodizio222("antecipado", timeDoPedido, idDoPedido)
+        IniciarRodizioDoModo("antecipado", timeDoPedido, idDoPedido)
     } catch as e {
         LogDiagnostico("SWITCH_ERROR", "phase=combo_fire", e)
     } finally {

@@ -3,7 +3,11 @@
 Macro de farm Hoenn **2-2-2**: 3 duplas (time 1, 2, 3), cada uma com um tank e um secundario.
 Fase COMBAR (combo) e fase TROCAR TIME (proxima dupla). Ha UM botao so (LB/RB; LT/RT livres): ele pede a PROXIMA
 acao do ciclo; o macro executa na hora (verde), arma e executa no verde, ou trata dois cliques
-como emergencia. Modos: Normal e Hoenn 2-2-2. Idioma do projeto: portugues.
+como emergencia. Modos: Normal, Hoenn 2-2-2 e Hoenn 1,5. Idioma do projeto: portugues.
+
+Modo alternativo **Hoenn 1,5**: 2 times de 3 (abre / meio / finaliza), 4 lures por volta; o meio
+divide as skills em duas partes. F12 / Back giram Normal -> 2-2-2 -> 1,5 -> Normal.
+Guia: `docs/hoenn15.md`.
 
 Estrutura, camadas e diagnostico: `docs/estrutura.md`. Historico e decisoes: `docs/tiers-e-combo-hoenn222.md`.
 
@@ -22,6 +26,12 @@ Estrutura, camadas e diagnostico: `docs/estrutura.md`. Historico e decisoes: `do
 | mapeamento botao do controle | `src/interface/controle.ahk` (`DespacharBotoes`) |
 | atalhos de teclado/mouse | `main.ahk` |
 | conta do cooldown, plano, verde | `src/tempo/` |
+| 1,5: tiers de quem abre/finaliza | `config.ahk`: `Hoenn15_OpenerTier`, `Hoenn15_FinisherTier` |
+| 1,5: skills do meio em cada parte (tecla + CD) | `config.ahk`: `Hoenn15_MiddlePart1Skills`, `Hoenn15_MiddlePart2Skills` (stun por ultimo na parte 2) |
+| 1,5: skill emprestada (usar uma skill de CD curto do meio do outro time) | `config.ahk`: `Hoenn15_GuestSkill`, `Hoenn15_GuestSleepAfterMs` |
+| 1,5: esperas e lure minima | `config.ahk`: `Hoenn15_SkillGapMs`, `Hoenn15_SleepAfterPart1Ms` (ate a pocao), `Hoenn15_SleepAfterPart2Ms`, `Hoenn15_MinLureMs` (lure 1), `Hoenn15_MinLure2Ms` (lure 2, do meio) |
+| modo ao abrir o macro | `config.ahk`: `StartMode` (`Hoenn222` ou `Hoenn15`) |
+| 1,5: conta e rodizio | `src/tempo/hoenn15.ahk`, `src/macro/rodizio_15.ahk` |
 
 Depois de editar o config: recarregar o macro (Ctrl+Esc ou Start) e F8 para resincronizar.
 Recarregar ou reabrir sempre comeca do zero no time 1, sem restaurar estado salvo.

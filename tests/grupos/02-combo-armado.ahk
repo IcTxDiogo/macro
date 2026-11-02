@@ -128,7 +128,9 @@ TestesComboArmado() {
     PedirCombo()
     Assert(ComboArmado, "E the press armed")
     TrocarModo()
-    Assert(!ComboArmado && ModoAtual == "Normal", "E mode change disarms")
+    Assert(!ComboArmado && ModoAtual == "Hoenn15", "E mode change disarms")
+    TrocarModo()
+    Assert(!ComboArmado && ModoAtual == "Normal", "E F12 gira 2-2-2 -> 1,5 -> Normal")
     MockTick += 60000
     GameLoop()
     Assert(Scheduled.Length == 0 && Sent.Length == 0, "E nothing runs in another mode")

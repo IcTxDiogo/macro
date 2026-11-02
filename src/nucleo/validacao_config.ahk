@@ -29,9 +29,71 @@ ValidarConfig() {
     } catch as e {
         problemas.Push("config ilegivel: " e.Message)
     }
+    ; O 1,5 nunca impede o 2-2-2 de iniciar: so avisa.
+    try {
+        ValidarHoenn15(problemas)
+    } catch as e {
+        problemas.Push("config do 1,5 ilegivel: " e.Message)
+    }
     for problema in problemas
         LogDiagnostico("CONFIG_PROBLEMA", "detalhe=" problema)
     return problemas
+}
+
+; Modo Hoenn ao abrir: StartMode do config; invalido ou ausente vira "Hoenn222".
+ModoInicialDoConfig() {
+    try {
+        if (StartMode == "Hoenn222" || StartMode == "Hoenn15")
+            return StartMode
+    }
+    return "Hoenn222"
+}
+
+ValidarHoenn15(problemas) {
+    if (ModoInicialDoConfig() != StartMode)
+        problemas.Push("StartMode invalido: " StartMode)
+    for papel, tiers in Map("abre", Hoenn15_OpenerTier, "finaliza", Hoenn15_FinisherTier) {
+        for time in [1, 2] {
+            if (!IsObject(tiers) || !tiers.Has(time))
+                problemas.Push("1,5: tier de quem " papel " no time " time " ausente")
+            else if !TierExisteNaTabela(tiers[time])
+                problemas.Push("1,5: tier '" tiers[time] "' (" papel " time " time ") fora da tabela")
+        }
+    }
+    for parte, mapa in Map(1, Hoenn15_MiddlePart1Skills, 2, Hoenn15_MiddlePart2Skills) {
+        for time in [1, 2] {
+            if (!(mapa is Map) || !mapa.Has(time) || !(mapa[time] is Array) || mapa[time].Length == 0) {
+                problemas.Push("1,5: skills da parte " parte " do time " time " ausentes")
+                continue
+            }
+            for skill in mapa[time] {
+                if (!IsObject(skill) || !skill.HasOwnProp("Key") || !skill.HasOwnProp("CdMs")
+                    || skill.Key = "" || !IsNumber(skill.CdMs) || skill.CdMs <= 0)
+                    problemas.Push("1,5: skill " A_Index " da parte " parte " do time " time " invalida")
+            }
+        }
+    }
+    if (!IsNumber(Hoenn15_SkillGapMs) || Hoenn15_SkillGapMs < 0)
+        problemas.Push("Hoenn15_SkillGapMs invalido: " Hoenn15_SkillGapMs)
+    for nome, mapa in Map("Hoenn15_SleepAfterPart1Ms", Hoenn15_SleepAfterPart1Ms, "Hoenn15_MinLure2Ms", Hoenn15_MinLure2Ms, "Hoenn15_SleepAfterPart2Ms", Hoenn15_SleepAfterPart2Ms, "Hoenn15_MinLureMs", Hoenn15_MinLureMs) {
+        for time in [1, 2] {
+            if (!IsObject(mapa) || !mapa.Has(time) || !IsNumber(mapa[time]) || mapa[time] < 0)
+                problemas.Push(nome "[" time "] invalido")
+        }
+    }
+    ; Skill emprestada (opcional): Map() vazio desliga.
+    if !(Hoenn15_GuestSkill is Map) {
+        problemas.Push("Hoenn15_GuestSkill nao e um Map")
+    } else {
+        for time, c in Hoenn15_GuestSkill {
+            if (!(time == 1 || time == 2) || !IsObject(c) || !c.HasOwnProp("FromTeam") || !c.HasOwnProp("Key")
+                || !c.HasOwnProp("CdMs") || !(c.FromTeam == 1 || c.FromTeam == 2) || c.FromTeam == time
+                || c.Key = "" || !IsNumber(c.CdMs) || c.CdMs <= 0)
+                problemas.Push("1,5: skill emprestada do time " time " invalida")
+        }
+    }
+    if (!IsNumber(Hoenn15_GuestSleepAfterMs) || Hoenn15_GuestSleepAfterMs < 0)
+        problemas.Push("Hoenn15_GuestSleepAfterMs invalido: " Hoenn15_GuestSleepAfterMs)
 }
 
 ValidarTiers(problemas) {

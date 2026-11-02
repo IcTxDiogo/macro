@@ -40,7 +40,9 @@ BootSemEntrada(*) {
 }
 '@
 $cases = @(
-    @{ Name = 'valido'; Override = ''; Expected = 'BOOT_OK L=76300' },
+    # O L depende dos tiers que o jogador deixou no config; aqui basta iniciar sem problema
+    # (BootLoop exige plano valido e nenhum aviso). O valor exato fica nos testes isolados.
+    @{ Name = 'valido'; Override = ''; Expected = 'BOOT_OK L=' },
     @{ Name = 'bloco-zero'; Override = 'Hoenn222_InBallBlockMs := 0'; Expected = 'Hoenn222_InBallBlockMs invalido: 0' },
     @{ Name = 'bloco-texto'; Override = 'Hoenn222_InBallBlockMs := "abc"'; Expected = 'Hoenn222_InBallBlockMs invalido: abc' },
     @{ Name = 'sleep-negativo'; Override = 'SleepAfterSwitch := -1'; Expected = 'SleepAfterSwitch invalido: -1' },

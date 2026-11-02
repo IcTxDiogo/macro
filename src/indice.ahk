@@ -1,7 +1,8 @@
 ﻿#Requires AutoHotkey v2.0
 ; Indice dos modulos. Camadas (cada uma so conhece as de cima nesta lista):
 ;   nucleo    estado global e log; sem regra de jogo
-;   tempo     CONTROLE DE TEMPO: cooldown por Pokemon, plano da volta, cronometro e verde.
+;   tempo     CONTROLE DE TEMPO: cooldown por Pokemon, plano da volta, cronometro e verde
+;             (hoenn15.ahk: o mesmo para o modo 1,5).
 ;             Nunca envia tecla nem toca na janela ou na interface.
 ;   macro     o que o macro FAZ no jogo: teclas, rodizios, troca de time, antecipacao, modos
 ;   interface gamepad (laco de 30 ms) e indicador visual
@@ -13,10 +14,12 @@
 #Include tempo\cooldown.ahk
 #Include tempo\planejador.ahk
 #Include tempo\cronometro.ahk
+#Include tempo\hoenn15.ahk
 
 #Include macro\teclas.ahk
 #Include macro\troca_time.ahk
 #Include macro\rodizio_222.ahk
+#Include macro\rodizio_15.ahk
 #Include macro\antecipacao.ahk
 #Include macro\antecipacao_combo.ahk
 #Include macro\antecipacao_troca.ahk

@@ -10,17 +10,21 @@
 ;   - depois de um cast, o CD novo so comeca a contar apos Hoenn222_LatencyMs;
 ;   - ao sair da Ball na troca de time (tank): Hoenn222_LatencyMs;
 ;   - ao sair da Ball na chamada (secundario): Hoenn222_ExitLatencySecondaryMs.
+;
+; Ha 10 relogios: o 2-2-2 usa os slots 1 a 6; o modo 1,5 usa ate os 10 (o meio de cada time
+; tem um relogio por parte, mais a skill emprestada; ver src\tempo\hoenn15.ahk).
+global TotalDeRelogios := 10
 
-global CooldownRestanteMs := [0, 0, 0, 0, 0, 0]
-global TaxaDeRecuperacao := [0, 0, 0, 0, 0, 0]
+global CooldownRestanteMs := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+global TaxaDeRecuperacao := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ; Instante a partir do qual CooldownRestanteMs volta a correr (no futuro = congelado).
-global CooldownContaDesdeTick := [0, 0, 0, 0, 0, 0]
+global CooldownContaDesdeTick := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ; Fracao do bloco configurado: sobrevive as leituras; reinicia na transicao de Ball/cast.
-global CooldownFracaoBallMs := [0, 0, 0, 0, 0, 0]
+global CooldownFracaoBallMs := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ; Instante estimado em que o CD zerou. A margem de seguranca conta a partir dele: sem
 ; isso, um CD zerado ha minutos continuaria exigindo a margem inteira e o verde nunca
 ; acenderia.
-global CooldownZerouTick := [0, 0, 0, 0, 0, 0]
+global CooldownZerouTick := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ; O tank de cada time ja castou desde o F8/inicio? Enquanto nao, o verde do COMBAR segue
 ; o ritmo do plano (ver FaltaParaLureDaPrimeiraVoltaMs).
 global TankJaCastou := Map(1, false, 2, false, 3, false)
@@ -77,20 +81,25 @@ RegistrarTrocaDeTime(timeAnterior, proximoTime, tick) {
     }
 }
 
-; F8: nada se sabe do estado do jogo, entao os seis comecam prontos e dentro da Ball.
+; F8: nada se sabe do estado do jogo, entao todos comecam prontos e dentro da Ball.
+; Os arrays sao recriados com todos os relogios (os testes podem ter trocado o tamanho).
 ResetarCooldowns(tick) {
     global CooldownRestanteMs, TaxaDeRecuperacao, CooldownContaDesdeTick, CooldownZerouTick
     global CooldownFracaoBallMs
     global TankJaCastou, Hoenn222_RateInBall
-    global ChamadaDoSecundarioTick
+    global ChamadaDoSecundarioTick, ChamadaDoMeio15Tick, ChamadaDoFinalizador15Tick
     ChamadaDoSecundarioTick := [0, 0, 0]
+    ChamadaDoMeio15Tick := [0, 0]
+    ChamadaDoFinalizador15Tick := [0, 0]
     TankJaCastou := Map(1, false, 2, false, 3, false)
-    loop 6 {
-        CooldownRestanteMs[A_Index] := 0
-        TaxaDeRecuperacao[A_Index] := Hoenn222_RateInBall
-        CooldownContaDesdeTick[A_Index] := tick
-        CooldownZerouTick[A_Index] := 0
-        CooldownFracaoBallMs[A_Index] := 0
+    CooldownRestanteMs := [], TaxaDeRecuperacao := [], CooldownContaDesdeTick := []
+    CooldownZerouTick := [], CooldownFracaoBallMs := []
+    loop TotalDeRelogios {
+        CooldownRestanteMs.Push(0)
+        TaxaDeRecuperacao.Push(Hoenn222_RateInBall)
+        CooldownContaDesdeTick.Push(tick)
+        CooldownZerouTick.Push(0)
+        CooldownFracaoBallMs.Push(0)
     }
 }
 

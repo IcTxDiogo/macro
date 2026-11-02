@@ -139,7 +139,6 @@ PlanejarVoltaEmBlocos() {
         throw Error("Parametros invalidos para o planejador discreto")
     preparo := PreparoPlanejadoMs()
     requisitos := [], pisos := []
-    somaPisos := 0
     loop 3 {
         time := A_Index
         for secundario in [false, true] {
@@ -149,9 +148,37 @@ PlanejarVoltaEmBlocos() {
                 ? Max(SleepAfterSwitch + preparo + SleepAfterCombo, PisoDoConfigMs("Hoenn222_MinSecondaryOutMs", time))
                 : SleepAfterTankCombo + preparo + PisoDoConfigMs("Hoenn222_MinLureMs", time)
             pisos.Push(piso)
-            somaPisos += piso
         }
     }
+    resolvido := ResolverVoltaEmBlocos(requisitos, pisos)
+    volta := resolvido.Volta, fora := resolvido.Fora, blocos := resolvido.Blocos
+    reservaFora := resolvido.ReservaFora, reservaBall := resolvido.ReservaBall
+    janelas := [], lures := [], tanks := [], secundarios := []
+    somaLure := 0
+    loop 3 {
+        slot := 2 * A_Index - 1
+        tanks.Push(fora[slot]), secundarios.Push(fora[slot + 1])
+        lure := fora[slot] - SleepAfterTankCombo - preparo
+        lures.Push(lure), janelas.Push(fora[slot] + fora[slot + 1])
+        somaLure += lure
+    }
+    PlanoEmCache := {L: volta, Janelas: janelas, Lures: lures, TankFora: tanks, SecFora: secundarios, FolgaLure: somaLure, JanelaMinima: SleepAfterTankCombo + 2 * preparo + SleepAfterSwitch + SleepAfterCombo, MargemEfetiva: 2 * Hoenn222_LatencyMs + Hoenn222_MarginMs, Discreto: true, PreparoMs: preparo, Blocos: blocos}
+    LogDiagnostico("CD_PLAN", "L=" volta " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3]) " lure=" Round(lures[1]) "," Round(lures[2]) "," Round(lures[3]) " tank_fora=" Round(tanks[1]) "," Round(tanks[2]) "," Round(tanks[3]) " sec_fora=" Round(secundarios[1]) "," Round(secundarios[2]) "," Round(secundarios[3]) " modelo_ball=blocos_" Format("{:g}", bloco / 1000) "s bloco_ball_ms=" bloco " credito_ball_ms=" Round(credito) " plano_piso_continuo=0 preparo_ms=" preparo " reserva_fora_ms=" reservaFora " reserva_ball_ms=" reservaBall " visual_confirmation=unknown")
+    return PlanoEmCache
+}
+
+; Busca comum aos modos 2-2-2 e 1,5: menor volta em que os seis periodos fora (um
+; Pokemon fora por vez) cobrem os `requisitos` de CD, respeitando os `pisos` fisicos.
+; Devolve {Volta, Fora[6], Blocos[6], ReservaFora, ReservaBall}. Lanca erro se nao couber.
+ResolverVoltaEmBlocos(requisitos, pisos) {
+    bloco := Hoenn222_InBallBlockMs
+    credito := CreditoDoBlocoBallMs()
+    taxa := Hoenn222_RateOutOfBall
+    if (bloco <= 0 || credito <= 0 || taxa <= Hoenn222_RateInBall)
+        throw Error("Parametros invalidos para o planejador discreto")
+    somaPisos := 0
+    for piso in pisos
+        somaPisos += piso
     reservaFora := Max(0, Hoenn222_PlannerOutReserveMs)
     reservaBall := Max(0, Hoenn222_PlannerBallReserveMs)
     inferior := somaPisos
@@ -199,20 +226,10 @@ PlanejarVoltaEmBlocos() {
         fora[slot] += acrescimo
         soma += acrescimo
     }
-    janelas := [], lures := [], tanks := [], secundarios := [], blocos := []
-    somaLure := 0
-    loop 3 {
-        slot := 2 * A_Index - 1
-        tanks.Push(fora[slot]), secundarios.Push(fora[slot + 1])
-        lure := fora[slot] - SleepAfterTankCombo - preparo
-        lures.Push(lure), janelas.Push(fora[slot] + fora[slot + 1])
-        somaLure += lure
-    }
+    blocos := []
     for escolha in escolhas
         blocos.Push(escolha.N)
-    PlanoEmCache := {L: volta, Janelas: janelas, Lures: lures, TankFora: tanks, SecFora: secundarios, FolgaLure: somaLure, JanelaMinima: SleepAfterTankCombo + 2 * preparo + SleepAfterSwitch + SleepAfterCombo, MargemEfetiva: 2 * Hoenn222_LatencyMs + Hoenn222_MarginMs, Discreto: true, PreparoMs: preparo, Blocos: blocos}
-    LogDiagnostico("CD_PLAN", "L=" volta " janelas=" Round(janelas[1]) "," Round(janelas[2]) "," Round(janelas[3]) " lure=" Round(lures[1]) "," Round(lures[2]) "," Round(lures[3]) " tank_fora=" Round(tanks[1]) "," Round(tanks[2]) "," Round(tanks[3]) " sec_fora=" Round(secundarios[1]) "," Round(secundarios[2]) "," Round(secundarios[3]) " modelo_ball=blocos_" Format("{:g}", bloco / 1000) "s bloco_ball_ms=" bloco " credito_ball_ms=" Round(credito) " plano_piso_continuo=0 preparo_ms=" preparo " reserva_fora_ms=" reservaFora " reserva_ball_ms=" reservaBall " visual_confirmation=unknown")
-    return PlanoEmCache
+    return {Volta: volta, Fora: fora, Blocos: blocos, ReservaFora: reservaFora, ReservaBall: reservaBall}
 }
 
 EncontrarDistribuicaoEmBlocos(volta, requisitos, pisos, reservaFora, reservaBall) {

@@ -22,8 +22,8 @@ AtualizarInterface(controleConectado := true) {
             ; O quadrado usa coordenadas da tela mesmo quando o painel esta em cache.
             CoordMode("ToolTip", "Screen")
             texto := TextoDeStatus
-            if (ModoAtual == "Hoenn222") {
-                texto := TextoDoPainel()
+            if ModoComRodizio() {
+                texto := (ModoAtual == "Hoenn15") ? TextoDoPainel15() : TextoDoPainel()
                 textoCentral := TextoDoQuadradoCentral(&corCentral)
                 DesenharQuadradoCentral(textoCentral, janelaX + PlayerOriginX + Hoenn222CenterOffsetX,
                     janelaY + PlayerOriginY + Hoenn222CenterOffsetY, corCentral)
@@ -101,6 +101,58 @@ TextoDoPainel() {
     }
 
     return texto
+}
+
+; Texto do painel no modo 1,5: parte atual, quem age nela e pedidos armados.
+TextoDoPainel15() {
+    global TimeAtual, FaseAtual, ComboArmado, TrocaArmada
+
+    texto := "HOENN 1,5 | TIME " TimeAtual "`n`n"
+    if (FaseAtual == "WAITING_FIRST_COMBO") {
+        texto .= "Aguardando primeiro combo`n"
+    } else if (FaseAtual == "WAITING_COMBO") {
+        texto .= "PARTE 1 (lure 1)`n`n"
+        texto .= "Abre: " RotuloDoTier15(TimeAtual, "abre") "`n"
+        convidado := ConvidadoDoTime15(TimeAtual)
+        if convidado
+            texto .= "Empr: " convidado.Key " (time " convidado.FromTeam ")`n"
+        texto .= "Meio: " TeclasDaParteNoPainel(TimeAtual, 1) "`n"
+    } else if (FaseAtual == "WAITING_PART2") {
+        texto .= "PARTE 2 (lure 2)`n`n"
+        texto .= "Meio: " TeclasDaParteNoPainel(TimeAtual, 2) "`n"
+        texto .= "Fim:  " RotuloDoTier15(TimeAtual, "fim") "`n"
+    } else if (FaseAtual == "WAITING_TEAM_SWITCH") {
+        proximoTime := (TimeAtual >= 2) ? 1 : (TimeAtual + 1)
+        texto .= "TROCAR TIME`n`nPróx: TIME " proximoTime "`n"
+    }
+
+    if (TrocaArmada)
+        texto .= "`nTROCA ARMADA`n"
+    if (ComboArmado) {
+        texto .= "`nPARTE ARMADA`n"
+        if Hoenn222_CdOptimizerEnabled {
+            bloqueio := QuemBloqueia15(FaseAtual, TimeAtual)
+            if (bloqueio == "abre" || bloqueio == "meio")
+                texto .= bloqueio " em CD`n"
+            else if (bloqueio == "fim")
+                texto .= "finalizador em CD`n"
+            else if (bloqueio == "ritmo")
+                texto .= "ritmo do plano`n"
+        }
+    }
+    return texto
+}
+
+; "f9 f6": as teclas da parte, como estao no config (ou "?" se o config estiver invalido).
+TeclasDaParteNoPainel(time, parte) {
+    try {
+        teclas := ""
+        for skill in SkillsDaParte15(time, parte)
+            teclas .= (A_Index > 1 ? " " : "") skill.Key
+        return teclas
+    } catch {
+        return "?"
+    }
 }
 
 ; Problemas do config.ahk (ver nucleo\validacao_config.ahk), ate 3 linhas, fixos no painel.

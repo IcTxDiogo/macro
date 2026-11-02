@@ -7,7 +7,8 @@
 # imitar ControlSend/WinExist/ToolTip reais (e isso que leva o AutoHotkey a checar a fila
 # de mensagens no meio do laco).
 #
-# Cenarios: combo armado disparando no verde e troca armada disparando no verde.
+# Cenarios: combo armado disparando no verde, troca armada disparando no verde e a parte 2
+# do modo 1,5 armada disparando no verde.
 # Falha (exit 1) se o laco de 30 ms ficar parado mais que $LimiteMs.
 param(
     [string]$SourceRoot = (Split-Path -Parent $PSScriptRoot),
@@ -95,6 +96,12 @@ Run() {
         FaseAtual := "WAITING_COMBO"
         InicioDaFaseTick := A_TickCount - (PlanejarVolta().Lures[1] - 1500)
         PedirCombo()
+    } else if (Scenario = "parte15") {
+        ; modo 1,5: PARTE 2 a ~1,5 s do verde; o pedido fica armado e roda a parte inteira
+        ModoAtual := "Hoenn15"
+        FaseAtual := "WAITING_PART2"
+        InicioDaFaseTick := A_TickCount - (RitmoDaParte2Ms(1) - 1500)
+        PedirCombo()
     } else {
         ; TROCAR TIME a ~1,5 s do verde; o gatilho fica armado
         FaseAtual := "WAITING_TEAM_SWITCH"
@@ -122,7 +129,7 @@ Fim() {
 "@
 
 $falhou = $false
-foreach ($cenario in 'combo', 'troca', 'daily') {
+foreach ($cenario in 'combo', 'troca', 'daily', 'parte15') {
     $dir = Join-Path $env:TEMP ('macro-live-stall-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir | Out-Null
     $script = [regex]::Replace("$header`r`n$source", "(?<!`r)`n", "`r`n")

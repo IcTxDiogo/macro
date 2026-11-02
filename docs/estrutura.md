@@ -32,15 +32,17 @@ Cada camada so conhece as de baixo: `interface` -> `macro` -> `tempo` -> `nucleo
 | `nucleo/estado.ahk` | variaveis globais: modo, time atual, fase, travas, pedidos armados |
 | `nucleo/validacao_config.ahk` | valida antes dos calculos; valores aritmeticos invalidos impedem iniciar, demais problemas aparecem no painel e no log |
 | `nucleo/logger.ahk` | log de sessao (`logs/`) e diagnostico (`LogDiagnostico`, `%TEMP%\macro_switch_debug.log`) |
-| `tempo/cooldown.ahk` | CD individual dos 6 Pokemon (acumulador, taxa fora/dentro da Ball, atrasos, margem) |
-| `tempo/planejador.ahk` | menor volta sustentavel e janelas por dupla (`PlanejarVolta`) |
+| `tempo/cooldown.ahk` | CD individual por relogio (8: os 6 do 2-2-2 e as partes do meio do 1,5): acumulador, taxa fora/dentro da Ball, atrasos, margem |
+| `tempo/planejador.ahk` | menor volta sustentavel e janelas por dupla (`PlanejarVolta`); busca por blocos comum aos dois modos (`ResolverVoltaEmBlocos`) |
 | `tempo/cronometro.ahk` | alvo de cada fase, pendente ate o verde, quem segura o verde |
+| `tempo/hoenn15.ahk` | modo 1,5: relogios, plano (`PlanejarVolta15`) e cronometro das partes |
 | `macro/teclas.ahk` | teclas basicas (`ComboSimples`, pocao, alvo, reiniciar) |
-| `macro/troca_time.ahk` | `TrocarDeTime`: validacao, envio, estado |
+| `macro/troca_time.ahk` | `TrocarDeTime` (3 times no 2-2-2, 2 no 1,5): validacao, envio, estado |
 | `macro/rodizio_222.ahk` | rodizio do modo 2-2-2 (registra cast e chamada no `tempo`) |
+| `macro/rodizio_15.ahk` | partes 1 e 2 do modo 1,5 (combo, chamada, skills do meio) |
 | `macro/antecipacao*.ahk` | combo e troca armados (verde automatico) e emergencia (duplo clique) |
-| `macro/modos.ahk` | `TrocarModo` e `Resincronizar` (F8) |
-| `macro/acoes.ahk` | acao de cada botao conforme o modo; `PedirProximaAcao` e o botao unico do 2-2-2 |
+| `macro/modos.ahk` | `TrocarModo` (F12: Normal -> 2-2-2 -> 1,5) e `Resincronizar` (F8) |
+| `macro/acoes.ahk` | acao de cada botao conforme o modo; `PedirProximaAcao` e o botao unico dos modos Hoenn |
 | `interface/controle.ahk` | laco de 30 ms: XInput, movimento, botoes -> acoes |
 | `interface/painel.ahk` | tooltip de texto e orquestracao da interface |
 | `interface/quadrado_central.ahk` | quadrado colorido (verde / azul / amarelo / violeta) |

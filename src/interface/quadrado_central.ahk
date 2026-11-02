@@ -19,13 +19,13 @@ TextoDoQuadradoCentral(&cor := unset) {
 }
 
 ; A cor diz exatamente o que o botao vai fazer: verde executa na hora; violeta ja tem pedido
-; armado; azul faltam <= 10 s no COMBAR; amarelo e o demais da espera.
+; armado; azul faltam <= 10 s no COMBAR (e na PARTE 2 do 1,5); amarelo e o demais da espera.
 CorDoQuadrado(faltaMs, fase, armado := false) {
     if (faltaMs <= 0)
         return "33CC66"
     if (armado)
         return "B266FF"
-    if (fase == "WAITING_COMBO" && faltaMs <= 10000)
+    if ((fase == "WAITING_COMBO" || fase == "WAITING_PART2") && faltaMs <= 10000)
         return "33A3FF"
     return "FFE033"
 }

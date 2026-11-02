@@ -4,11 +4,13 @@
 
 ; Quanto dura a fase `fase` do time contada desde o inicio dela (InicioDaFaseTick).
 ; Com o otimizador ligado vem do estado real dos seis Pokemon; desligado, ou se algo
-; falhar, usa os alvos fixos do config.ahk.
+; falhar, usa os alvos fixos do config.ahk. O modo 1,5 tem o proprio calculo (hoenn15.ahk).
 AlvoDaFaseMs(fase, time) {
     global Hoenn222_CdOptimizerEnabled, Hoenn222_ComboTargetMs, Hoenn222_SwitchTargetMs
     global InicioDaFaseTick
 
+    if (ModoAtual == "Hoenn15")
+        return AlvoDaFase15Ms(fase, time)
     if (fase != "WAITING_COMBO" && fase != "WAITING_TEAM_SWITCH")
         return 0
 

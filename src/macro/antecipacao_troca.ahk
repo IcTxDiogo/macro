@@ -55,11 +55,11 @@ PedirTrocaDeTime(origem := "direct") {
     LogDiagnostico("SWITCH_ARMED", "team=" TimeDaTrocaArmada " state=" fase " missing_ms=" faltaTexto)
 }
 
-; Sequencia de sempre do gatilho em 2-2-2: troca, espera, Pokestop, pocao.
+; Sequencia de sempre do gatilho nos modos Hoenn: troca, espera, Pokestop, pocao.
 ; `timeEsperado` > 0 so no disparo automatico: nunca troca fora do time em que o pedido foi feito.
 ExecutarTrocaDeTime(origem := "direct", timeEsperado := 0) {
     global TimeAtual, ModoAtual, GameWindow, KeyPokestop
-    if (timeEsperado > 0 && (TimeAtual != timeEsperado || ModoAtual != "Hoenn222")) {
+    if (timeEsperado > 0 && (TimeAtual != timeEsperado || !ModoComRodizio())) {
         LogDiagnostico("SWITCH_REJECTED", "reason=armed_context_changed expected=" timeEsperado " current=" TimeAtual)
         return
     }
@@ -77,7 +77,7 @@ VerificarTrocaArmada() {
 
     if (!TrocaArmada)
         return
-    if (ModoAtual != "Hoenn222" || TimeAtual != TimeDaTrocaArmada) {
+    if (!ModoComRodizio() || TimeAtual != TimeDaTrocaArmada) {
         CancelarPedidosArmados("context_changed")
         return
     }
