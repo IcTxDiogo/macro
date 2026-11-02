@@ -152,8 +152,8 @@ ResetCase(state := "WAITING_FIRST_COMBO", debt := 0, elapsed := 0) {
     Plano15EmCache := false
     MockCheckCast15 := false, MockSimCasts15 := 0
     Hoenn222_CdOptimizerEnabled := true
-    ; Os tiers do config.ahk sao do jogador e mudam por respawn; os testes legados medem os
-    ; planos de referencia (76,3 s etc.) com estes tiers fixos.
+    ; Tiers de tests/config-referencia.ahk, repostos a cada caso: os grupos que testam
+    ; outros tiers nao vazam para o seguinte (planos de referencia de 76,3 s etc.).
     Hoenn222_TankTier := Map(1, "SR", 2, "SR", 3, "SR")
     Hoenn222_SecondTier := Map(1, "Lendário", 2, "UR", 3, "UR")
     Hoenn222_InBallWholeBlocks := false

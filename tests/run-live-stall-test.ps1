@@ -18,6 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'fontes.ps1')
 Test-IndicesDeInclude $SourceRoot
+Test-ConfigDeReferencia $SourceRoot
 Test-CamadaTempo $SourceRoot
 
 function Read-TestSource([string]$relativePath) {
@@ -27,7 +28,8 @@ function Read-TestSource([string]$relativePath) {
 }
 
 $modulos = Read-ModulosJuntos $SourceRoot $script:Modulos { param($m) Read-TestSource $m }
-$source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
+# Config de referencia por cima do config.ahk do jogador (ver tests/config-referencia.ahk).
+$source = (Read-TestSource 'config.ahk') + "`r`n" + (Read-TestSource 'tests/config-referencia.ahk') + "`r`n" + $modulos
 
 # Mesmas fronteiras de I/O do runner isolado, MENOS SetTimer, Sleep e A_TickCount.
 $source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')

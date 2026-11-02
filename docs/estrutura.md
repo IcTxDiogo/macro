@@ -78,7 +78,12 @@ powershell -File tests\run-live-stall-test.ps1                    # timers reais
 Antes de rodar os testes, os runners conferem: (1) `src/indice.ahk` e `tests/fontes.ps1`
 listam os mesmos modulos, na mesma ordem, e nenhum `.ahk` de `src/` ficou fora; (2) `src/tempo`
 nao usa funcoes de macro/interface; (3) o `main.ahk` carrega de verdade (`/validate`, sem
-executar nem ler o gamepad). `tests/simulacoes/` guarda os simuladores antigos do modelo.
+executar nem ler o gamepad); (4) toda chave `global` do `config.ahk` tem valor em
+`tests/config-referencia.ahk`. `tests/simulacoes/` guarda os simuladores antigos do modelo.
+
+Os testes de logica e de travamento carregam `tests/config-referencia.ahk` por cima do
+`config.ahk`: mudar tiers, lures ou esperas para jogar nunca quebra um teste. Teste que precisa
+de outro valor muda so dentro do proprio teste. O boot isolado e o unico que usa o config real.
 
 Os testes estao divididos por tema: `tests/base.ahk` (mocks, `ResetCase`, auxiliares e o
 `RunTests` que chama cada tema) e `tests/grupos/NN-tema.ahk` (uma funcao `Testes*` por arquivo,

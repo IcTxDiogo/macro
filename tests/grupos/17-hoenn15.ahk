@@ -103,21 +103,21 @@ TestesSkillEmprestada15() {
 ConferirPlano15(plano) {
     soma := 0
     loop 2 {
-        time := A_Index
+        timeDoPlano := A_Index
         loop 3 {
             posicao := A_Index
-            f := plano.Fora[(time - 1) * 3 + posicao]
+            f := plano.Fora[(timeDoPlano - 1) * 3 + posicao]
             soma += f
             atraso := (posicao == 1) ? 2 * Hoenn222_LatencyMs : Hoenn222_LatencyMs + Hoenn222_ExitLatencySecondaryMs
-            cd := (posicao == 1) ? CooldownDoRelogio15Ms(time, "abre")
-                : (posicao == 2) ? Max(CooldownDaParte15Ms(time, 1), CooldownDaParte15Ms(time, 2))
-                : CooldownDoRelogio15Ms(time, "fim")
+            cd := (posicao == 1) ? CooldownDoRelogio15Ms(timeDoPlano, "abre")
+                : (posicao == 2) ? Max(CooldownDaParte15Ms(timeDoPlano, 1), CooldownDaParte15Ms(timeDoPlano, 2))
+                : CooldownDoRelogio15Ms(timeDoPlano, "fim")
             recuperado := (f - atraso) * Hoenn222_RateOutOfBall + Floor((plano.L - f) / Hoenn222_InBallBlockMs) * CreditoDoBlocoBallMs()
-            Assert(recuperado + 0.001 >= cd + Hoenn222_MarginMs + Hoenn222_PlannerOutReserveMs, "AR posicao " posicao " do time " time " recupera o CD")
+            Assert(recuperado + 0.001 >= cd + Hoenn222_MarginMs + Hoenn222_PlannerOutReserveMs, "AR posicao " posicao " do time " timeDoPlano " recupera o CD")
         }
-        Assert(plano.Lures[time] + 0.001 >= Hoenn15_MinLureMs[time], "AR lure 1 do time " time " respeita o minimo")
-        foraMeio := plano.Fora[(time - 1) * 3 + 2]
-        Assert(foraMeio + 0.001 >= SleepAfterSwitch + 50 + Hoenn15_SkillGapMs + DuracaoDaParte15Ms(time, 1) + PausaDepoisDaParte1Ms(time) + Hoenn15_MinLure2Ms[time] + DuracaoDaParte15Ms(time, 2) + PausaDepoisDaParte2Ms(time), "AR meio do time " time " cabe Pokestop, parte 1, pocao e a lure 2")
+        Assert(plano.Lures[timeDoPlano] + 0.001 >= Hoenn15_MinLureMs[timeDoPlano], "AR lure 1 do time " timeDoPlano " respeita o minimo")
+        foraMeio := plano.Fora[(timeDoPlano - 1) * 3 + 2]
+        Assert(foraMeio + 0.001 >= SleepAfterSwitch + 50 + Hoenn15_SkillGapMs + DuracaoDaParte15Ms(timeDoPlano, 1) + PausaDepoisDaParte1Ms(timeDoPlano) + Hoenn15_MinLure2Ms[timeDoPlano] + DuracaoDaParte15Ms(timeDoPlano, 2) + PausaDepoisDaParte2Ms(timeDoPlano), "AR meio do time " timeDoPlano " cabe Pokestop, parte 1, pocao e a lure 2")
     }
     Assert(Abs(soma - plano.L) < 0.01, "AR os seis periodos fora somam a volta")
 }

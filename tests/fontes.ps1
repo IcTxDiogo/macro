@@ -25,6 +25,18 @@ function Test-IndicesDeInclude([string]$SourceRoot) {
     if ($orfaos) { throw "Modulos fora do indice: $($orfaos -join ', ')" }
 }
 
+# Os testes usam tests/config-referencia.ahk por cima do config.ahk do jogador. Toda chave
+# global do config.ahk precisa de um valor de referencia, senao o teste passaria a depender
+# do que o jogador ajustou (falso positivo/negativo).
+function Test-ConfigDeReferencia([string]$SourceRoot) {
+    $config = Get-Content -LiteralPath (Join-Path $SourceRoot 'config.ahk') -Raw -Encoding UTF8
+    $referencia = Get-Content -LiteralPath (Join-Path $SourceRoot 'tests/config-referencia.ahk') -Raw -Encoding UTF8
+    $chaves = [regex]::Matches($config, '(?m)^\s*global\s+(\w+)\s*:=') | ForEach-Object { $_.Groups[1].Value }
+    $comValor = [regex]::Matches($referencia, '(?m)^\s*(\w+)\s*:=') | ForEach-Object { $_.Groups[1].Value }
+    $faltando = $chaves | Where-Object { $comValor -notcontains $_ }
+    if ($faltando) { throw "tests/config-referencia.ahk sem valor para: $($faltando -join ', ')" }
+}
+
 # A camada de tempo (src/tempo) decide QUANDO liberar; nunca envia tecla, nem toca na
 # janela, na interface ou em timers. Quebrar isso mistura controle de tempo com macro.
 function Test-CamadaTempo([string]$SourceRoot) {

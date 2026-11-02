@@ -6,6 +6,7 @@
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'fontes.ps1')
 Test-IndicesDeInclude $SourceRoot
+Test-ConfigDeReferencia $SourceRoot
 Test-CamadaTempo $SourceRoot
 Test-MainCarrega $SourceRoot $AutoHotkey
 $testDirectory = Join-Path $env:TEMP ('macro-switch-tests-' + [guid]::NewGuid().ToString('N'))
@@ -29,7 +30,8 @@ function Read-TestSource([string]$relativePath) {
 $modulos = Read-ModulosJuntos $SourceRoot $script:Modulos { param($m) Read-TestSource $m }
 $modulos = $modulos.Replace('A_ScriptDir "\logs"', 'A_ScriptDir "\session_logs"')
 $modulos = $modulos.Replace('A_Temp "\macro_switch_debug.log"', 'A_ScriptDir "\debug-init.log"')
-$source = (Read-TestSource 'config.ahk') + "`r`n" + $modulos
+# O config de referencia vem por cima do config.ahk do jogador: o resultado nao depende dele.
+$source = (Read-TestSource 'config.ahk') + "`r`n" + (Read-TestSource 'tests/config-referencia.ahk') + "`r`n" + $modulos
 
 # Executar as funções de produção, substituindo apenas fronteiras de I/O e relógio.
 $source = [regex]::Replace($source, '(?m)^AlvoDaFaseMs\(', 'RealBaseTarget(')

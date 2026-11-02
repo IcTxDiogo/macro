@@ -96,6 +96,10 @@ powershell -File tests\run-live-stall-test.ps1                     # timers reai
 - Testes por tema: `tests/base.ahk` (mocks, `ResetCase`, `RunTests`) e `tests/grupos/NN-tema.ahk`.
   Grupo novo: criar a funcao `Testes*` no arquivo do tema e chama-la em `RunTests`.
 - `ResetCase()` zera extras e pisos; ligue-os no grupo que testar.
+- **Os testes nao dependem do `config.ahk` do jogador.** Os runners de logica e de travamento
+  carregam `tests/config-referencia.ahk` por cima dele; teste que precisa de outro valor muda
+  so no proprio teste. **Chave nova no `config.ahk`: dar um valor em `tests/config-referencia.ahk`**
+  (o runner falha se faltar). So o teste de boot usa o config real, para conferir que ele inicia.
 
 ## Convencoes e armadilhas do AutoHotkey v2 deste repo
 
